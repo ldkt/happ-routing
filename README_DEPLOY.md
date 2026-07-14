@@ -95,10 +95,6 @@ curl http://localhost:<PORT>/api/status
 
 Эндпоинт возвращает JSON со значениями `current_version`, `latest_version`, `has_update`, `changes`, `checked_at` и `health`.
 
-## Home Assistant Package
-
-Скопируйте `packages/urdb.yaml`, добавьте в `secrets.yaml` базовый адрес `urdb_api: http://<VPS>:8080` и подключите packages одной строкой: `homeassistant: {packages: !include_dir_named packages}`.
-
 ## Остановка
 
 ```bash

@@ -126,6 +126,10 @@ Insert `3x-ui-routing.json` into the Xray routing configuration. Adjust
 `targets/xray.yaml` if the server uses outbound tags other than `direct`,
 `proxy` and `block`.
 
+## Home Assistant через HACS
+
+Добавьте `https://github.com/ldkt/happ-routing` в HACS как custom repository типа **Integration**, установите **Universal Routing Database**, перезапустите Home Assistant и выберите **Настройки → Устройства и службы → Добавить интеграцию → Universal Routing Database**. Config Flow запросит только базовый URL URDB API и автоматически создаст устройство, два сенсора, три кнопки и Diagnostics; YAML и ручное редактирование `configuration.yaml` не используются.
+
 ## Development
 
 Requirements: Git, Go, Python 3 and curl.

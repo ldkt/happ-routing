@@ -1,0 +1,31 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This URDB API is already configured"
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the URDB API",
+      "invalid_url": "Enter a valid HTTP or HTTPS URL"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "api_url": "API URL"
+        },
+        "description": "Enter the base URL of the URDB API",
+        "title": "Connect to URDB"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "check_updates": {"name": "Check for updates"},
+      "restart": {"name": "Restart"},
+      "update": {"name": "Update"}
+    },
+    "sensor": {
+      "changes": {"name": "Changes"},
+      "status": {"name": "Status"}
+    }
+  }
+}

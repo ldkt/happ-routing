@@ -1,0 +1,27 @@
+{
+  "config": {
+    "abort": {"already_configured": "Этот URDB API уже настроен"},
+    "error": {
+      "cannot_connect": "Не удалось подключиться к URDB API",
+      "invalid_url": "Введите корректный HTTP или HTTPS URL"
+    },
+    "step": {
+      "user": {
+        "data": {"api_url": "URL API"},
+        "description": "Введите базовый URL URDB API",
+        "title": "Подключение к URDB"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "check_updates": {"name": "Проверить обновления"},
+      "restart": {"name": "Перезапустить"},
+      "update": {"name": "Обновить"}
+    },
+    "sensor": {
+      "changes": {"name": "Изменения"},
+      "status": {"name": "Статус"}
+    }
+  }
+}
