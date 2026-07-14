@@ -1,0 +1,49 @@
+name: Keenetic PR artifacts
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-keenetic-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Build and validate existing artifacts
+        run: make build
+      - name: Generate Keenetic domain lists
+        run: make keenetic
+      - name: Verify Keenetic artifact set
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            proxy-video.txt
+            proxy-ai.txt
+            proxy-dev.txt
+            proxy-social.txt
+            proxy-ipcheck.txt
+            routing-proxy.txt
+          )
+          test "$(find release/keenetic -maxdepth 1 -type f | wc -l)" -eq "${#expected[@]}"
+          for name in "${expected[@]}"; do
+            test -s "release/keenetic/$name"
+          done
+      - name: Upload Keenetic artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keenetic-artifacts
+          path: release/keenetic/
+          if-no-files-found: error
+          retention-days: 7
