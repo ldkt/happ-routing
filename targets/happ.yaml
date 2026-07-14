@@ -5,9 +5,9 @@ release_base_url: https://github.com/ldkt/happ-routing/releases/latest/download
 dns:
   remote:
     type: DoH
-    domain: https://cloudflare-dns.com/dns-query
-    ip: 1.1.1.1
-  domestic:
-    type: DoH
     domain: https://dns.google/dns-query
     ip: 8.8.8.8
+  domestic:
+    type: DoH
+    domain: https://dns.yandex.net/dns-query
+    ip: 77.88.8.8
