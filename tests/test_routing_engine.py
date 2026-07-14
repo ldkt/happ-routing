@@ -10,9 +10,42 @@ from routing_engine.model import Action, PolicyError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PROXY_MODULES = (
+    "proxy-ai",
+    "proxy-video",
+    "proxy-dev",
+    "proxy-social",
+    "proxy-ipcheck",
+)
+
+
+def active_data_rules(name: str) -> list[str]:
+    return [
+        line.strip()
+        for line in (ROOT / "data" / name).read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
 
 
 class RoutingEngineTest(unittest.TestCase):
+    def test_routing_proxy_is_only_a_module_aggregate(self):
+        self.assertEqual(
+            active_data_rules("routing-proxy"),
+            [f"include:{name}" for name in PROXY_MODULES],
+        )
+
+    def test_proxy_modules_cover_required_services(self):
+        self.assertEqual(active_data_rules("proxy-video"), ["include:youtube", "gvt1.com"])
+        self.assertEqual(active_data_rules("proxy-dev"), ["include:github"])
+        self.assertEqual(
+            active_data_rules("proxy-social"),
+            ["include:telegram", "include:reddit", "include:x"],
+        )
+        self.assertIn("chatgpt.com", active_data_rules("proxy-ai"))
+        self.assertIn("2ip.io", active_data_rules("proxy-ipcheck"))
+        self.assertEqual(active_data_rules("proxy-games"), ["full:proxy-games.invalid"])
+        self.assertEqual(active_data_rules("proxy-media"), ["full:proxy-media.invalid"])
+
     def test_policy_owns_precedence_and_fallback(self):
         policy = load_policy(ROOT / "policy")
         self.assertEqual(
