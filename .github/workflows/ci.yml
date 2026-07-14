@@ -55,4 +55,6 @@ jobs:
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config
       - name: Build URDB API image
-        run: docker compose --env-file .env.example build
+        run: docker build --tag urdb-api:test .
+      - name: Build URDB updater image
+        run: docker build --file Dockerfile.updater --tag urdb-updater:test .

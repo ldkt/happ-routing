@@ -18,6 +18,14 @@ class ReleaseClient(Protocol):
     def get_release_info(self) -> dict[str, object]: ...
 
 
+class UpdateController(Protocol):
+    """Privileged operations delegated to the updater sidecar."""
+
+    def update(self) -> dict[str, object]: ...
+
+    def restart(self) -> dict[str, object]: ...
+
+
 class StatusAPIError(RuntimeError):
     """Raised when Orchestrator data cannot form a consistent status."""
 
@@ -30,9 +38,11 @@ class StatusService:
         client: ReleaseClient,
         *,
         clock: Callable[[], datetime] | None = None,
+        updater: UpdateController | None = None,
     ) -> None:
         self._client = client
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._updater = updater
 
     def get_status(self) -> dict[str, object]:
         update = self._client.check_updates()
@@ -81,8 +91,8 @@ class StatusService:
 
         return self.get_status()
 
-    def dry_run_update(self) -> dict[str, object]:
-        """Check for an update and record intent without downloading or installing."""
+    def request_update(self) -> dict[str, object]:
+        """Check for a release and delegate the safe rollout to the sidecar."""
 
         update = self._client.check_updates()
         current_version = _string(update, "current_version")
@@ -91,12 +101,24 @@ class StatusService:
         if not isinstance(has_update, bool):
             raise StatusAPIError("Orchestrator returned invalid has_update")
         LOGGER.info(
-            "Dry-run update: current_version=%s latest_version=%s has_update=%s",
+            "Update requested: current_version=%s latest_version=%s has_update=%s",
             current_version,
             latest_version,
             has_update,
         )
-        return {"accepted": True, "message": "Dry-run update"}
+        if not has_update:
+            return {"accepted": True, "message": "Already up to date"}
+        if self._updater is None:
+            raise StatusAPIError("updater is not configured")
+        return self._updater.update()
+
+    def request_restart(self) -> dict[str, object]:
+        """Delegate an API-container restart to the sidecar."""
+
+        if self._updater is None:
+            raise StatusAPIError("updater is not configured")
+        LOGGER.info("Container restart requested")
+        return self._updater.restart()
 
 
 def extract_changes(notes: str) -> list[str]:

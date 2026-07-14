@@ -20,6 +20,7 @@ from orchestrator.github_release import (
 )
 
 from .api import StatusAPIError, StatusService
+from .updater_client import UpdaterClient, UpdaterClientError
 
 
 def create_server(
@@ -38,7 +39,7 @@ def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
                 operation = service.get_status
             elif path == "/api/changes":
                 operation = service.get_changes
-            elif path in {"/api/check", "/api/update"}:
+            elif path in {"/api/check", "/api/update", "/api/restart"}:
                 self._method_not_allowed("POST")
                 return
             else:
@@ -60,7 +61,10 @@ def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
                 operation = service.check_now
                 status = HTTPStatus.OK
             elif path == "/api/update":
-                operation = service.dry_run_update
+                operation = service.request_update
+                status = HTTPStatus.ACCEPTED
+            elif path == "/api/restart":
+                operation = service.request_restart
                 status = HTTPStatus.ACCEPTED
             elif path in {"/api/status", "/api/changes"}:
                 self._method_not_allowed("GET")
@@ -70,7 +74,7 @@ def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
                 return
             try:
                 response = operation()
-            except (OrchestratorError, StatusAPIError) as error:
+            except (OrchestratorError, StatusAPIError, UpdaterClientError) as error:
                 self._json_response(
                     HTTPStatus.SERVICE_UNAVAILABLE,
                     {"health": "error", "error": str(error)},
@@ -131,7 +135,13 @@ def main() -> None:
         current_version=args.current_version,
         token=token_from_environment(),
     )
-    server = create_server((args.host, args.port), StatusService(client))
+    updater = UpdaterClient(
+        os.environ.get("URDB_UPDATER_URL", "http://urdb-updater:8081"),
+        os.environ.get("URDB_UPDATER_TOKEN", ""),
+    )
+    server = create_server(
+        (args.host, args.port), StatusService(client, updater=updater)
+    )
     try:
         print(f"URDB status API listening on http://{args.host}:{args.port}")
         server.serve_forever()

@@ -1,0 +1,11 @@
+FROM docker:27-cli
+
+RUN apk add --no-cache python3
+
+WORKDIR /app
+
+COPY updater/ ./updater/
+
+EXPOSE 8081
+
+CMD ["python3", "-m", "updater.server"]
