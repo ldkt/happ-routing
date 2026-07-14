@@ -17,10 +17,22 @@ class ServiceRegistryError(ValueError):
 class ServiceCategory(str, Enum):
     """Categories currently recognized by the service registry."""
 
+    VIDEO = "video"
+    MESSENGER = "messenger"
+    SOCIAL = "social"
     AI = "ai"
     DEVELOPER = "developer"
-    MESSENGER = "messenger"
-    VIDEO = "video"
+    GAMING = "gaming"
+    STREAMING = "streaming"
+    FINANCE = "finance"
+    CLOUD = "cloud"
+    SECURITY = "security"
+    MUSIC = "music"
+    EDUCATION = "education"
+    SHOPPING = "shopping"
+    GOVERNMENT = "government"
+    NEWS = "news"
+    CDN = "cdn"
 
 
 @dataclass(frozen=True)
