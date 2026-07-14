@@ -1,14 +1,13 @@
 services:
   urdb-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: urdb-api:local
+    image: ${URDB_IMAGE:-ghcr.io/ldkt/happ-routing:latest}
+    container_name: urdb-api
     environment:
       URDB_API_HOST: 0.0.0.0
       URDB_API_PORT: "8080"
-      URDB_CURRENT_VERSION: ${URDB_CURRENT_VERSION:-development}
       URDB_REPOSITORY: ${URDB_REPOSITORY:-ldkt/happ-routing}
+      URDB_UPDATER_URL: http://urdb-updater:8081
+      URDB_UPDATER_TOKEN: ${URDB_UPDATER_TOKEN:-replace-with-a-long-random-token}
     ports:
       - "${URDB_API_PORT:-8080}:8080"
     read_only: true
@@ -23,6 +22,27 @@ services:
           socket.create_connection(
               ('127.0.0.1', int(os.environ['URDB_API_PORT'])), 2
           ).close()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  urdb-updater:
+    image: ${URDB_UPDATER_IMAGE:-ghcr.io/ldkt/happ-routing-updater:latest}
+    container_name: urdb-updater
+    environment:
+      URDB_IMAGE: ${URDB_IMAGE:-ghcr.io/ldkt/happ-routing:latest}
+      URDB_COMPOSE_FILE: /deployment/docker-compose.yml
+      URDB_UPDATER_TOKEN: ${URDB_UPDATER_TOKEN:-replace-with-a-long-random-token}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/deployment:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8081/health"]
       interval: 30s
       timeout: 5s
       retries: 3
