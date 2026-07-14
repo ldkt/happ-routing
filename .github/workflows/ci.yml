@@ -19,7 +19,12 @@ jobs:
       - name: Install Home Assistant test dependencies
         run: python -m pip install -r requirements-homeassistant-test.txt
       - name: Test Home Assistant Config Entry entities
-        run: python -m pytest -q tests/homeassistant
+        run: |
+          mkdir -p /tmp/urdb-ha-test/tests
+          cp -R custom_components /tmp/urdb-ha-test/
+          cp -R tests/homeassistant/. /tmp/urdb-ha-test/tests/
+          cd /tmp/urdb-ha-test
+          python -m pytest -q tests
 
   test:
     runs-on: ubuntu-latest
