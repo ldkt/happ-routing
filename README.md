@@ -1,106 +1,149 @@
-# Happ Routing
+# Universal Routing Engine
 
-Автоматически обновляемый комплект маршрутизации для [Happ](https://www.happ.su/)
-и Xray в [3x-ui](https://github.com/MHSanaei/3x-ui). Репозиторий хранит один
-декларативный профиль и ежедневно выпускает совместимые `geosite.dat`,
-`geoip.dat`, ссылку импорта Happ и JSON маршрутизации 3x-ui.
+Client-neutral routing policy compiler for VPN and proxy ecosystems. Routing
+decisions are defined once and converted into Happ and Xray/3x-ui artifacts.
+The architecture is prepared for future sing-box, Clash/Mihomo and Keenetic
+generators without coupling the policy to any client.
 
-## Готовые файлы
+> Keenetic, sing-box and Clash/Mihomo generators are not implemented yet.
 
-После первого запуска workflow **Update routing data** файлы доступны в latest
-release:
+## Architecture
 
-| Файл | Назначение |
+```text
+policy/*.yaml ──> typed core model ──> generator ──> client artifacts
+                       │
+targets/*.yaml ────────┘
+```
+
+The layers have deliberately narrow responsibilities:
+
+| Layer | Location | Responsibility |
+| --- | --- | --- |
+| Routing Policy | `policy/` | Rules, precedence, fallback and domain strategy |
+| Core | `routing_engine/model.py`, `loader.py` | Loading, normalization and validation |
+| Target settings | `targets/` | Client-specific URLs, DNS settings and outbound tags |
+| Generators | `routing_engine/generators/` | Pure conversion of a validated policy to client formats |
+| Geodata build | `data/`, `scripts/build.sh` | Compile custom geosite categories and package GeoIP |
+
+Business rules must not be added to generators. If a decision affects routing
+semantics—such as precedence, fallback, validation or classification—it belongs
+to the policy or core model. A generator may only map the validated model to a
+client schema.
+
+## Routing Policy
+
+`policy/policy.yaml` contains global semantics:
+
+```yaml
+version: 1
+name: Universal Routing Policy
+domain_strategy: IPIfNonMatch
+action_order: [block, direct, proxy]
+fallback: direct
+```
+
+Rules are split by action for clean reviews:
+
+- `policy/direct.yaml` — bypass proxy;
+- `policy/proxy.yaml` — use proxy;
+- `policy/block.yaml` — reject traffic.
+
+Each file has the same client-neutral shape:
+
+```yaml
+domains:
+  - geosite:private
+ips:
+  - geoip:private
+```
+
+Custom domain-list-community categories remain under `data/`. They are compiled
+into `geosite.dat` and referenced from the policy as `geosite:routing-direct`,
+`geosite:routing-proxy` and `geosite:routing-block`. The old `happ-*` categories
+remain as aliases so existing installations continue to work; new rules belong
+in the client-neutral `data/routing-*` lists.
+
+## Generators
+
+Every generator implements the small contract in
+`routing_engine/generators/base.py` and is registered in
+`routing_engine/generators/__init__.py`.
+
+Implemented:
+
+- Happ → `happ-routing.json`, `happ-routing-link.txt`;
+- Xray/3x-ui → `3x-ui-routing.json`.
+
+Planned adapters can be added independently:
+
+- sing-box;
+- Clash/Mihomo;
+- Keenetic.
+
+To add one, create a serializer, register it, and add a YAML file under
+`targets/`. Do not duplicate policy ordering or fallback logic in the adapter;
+consume `RoutingPolicy.ordered_rules()` and `RoutingPolicy.fallback`.
+
+## Release artifacts
+
+The daily GitHub workflow builds and validates:
+
+| File | Purpose |
 | --- | --- |
-| `geosite.dat` | Актуальные списки v2fly плюс `happ-direct`, `happ-proxy`, `happ-block` |
-| `geoip.dat` | Актуальная база Loyalsoldier, проверенная по upstream SHA-256 |
-| `happ-routing.json` | Читаемый профиль Happ |
-| `happ-routing-link.txt` | Готовая ссылка `happ://routing/onadd/...` |
-| `3x-ui-routing.json` | Объект `routing` для Xray/3x-ui |
-| `release.json` | Версии источников, размеры и контрольные суммы |
-| `SHA256SUMS` | SHA-256 всех публикуемых артефактов |
+| `geosite.dat` | v2fly lists plus local custom categories |
+| `geoip.dat` | Loyalsoldier database verified against upstream SHA-256 |
+| `happ-routing.json` | Happ routing profile |
+| `happ-routing-link.txt` | Happ `happ://routing/onadd/...` import link |
+| `3x-ui-routing.json` | Xray routing object for 3x-ui |
+| `release.json` | Source provenance, sizes and digests |
+| `SHA256SUMS` | Release checksums |
 
-Базовый URL релиза:
+Latest release base URL:
 
 ```text
 https://github.com/ldkt/happ-routing/releases/latest/download
 ```
 
-## Настройка правил
+## Using Happ
 
-Общий профиль находится в [`config/routing.json`](config/routing.json). Изменяйте
-массивы `directSites`, `proxySites`, `blockSites` и соответствующие IP-массивы.
-Локальные доменные категории находятся в `data/`:
+Open `happ-routing-link.txt` from the latest release on a device with Happ and
+confirm profile import. The profile points to the latest `geoip.dat` and
+`geosite.dat`, preserving the behavior of the original Happ-specific project.
+Happ-only DNS and release URL settings live in `targets/happ.yaml`.
 
-- `data/happ-direct` — прямое соединение;
-- `data/happ-proxy` — прокси;
-- `data/happ-block` — блокировка.
+## Using Xray and 3x-ui
 
-Синтаксис соответствует `v2fly/domain-list-community`: `domain:`, `full:`,
-`keyword:`, `regexp:` и `include:`. Порядок правил важен: блокировка проверяется
-до прямых и прокси-правил.
-
-## Happ
-
-1. Откройте latest release репозитория.
-2. Откройте `happ-routing-link.txt` и перейдите по находящейся в нём ссылке на
-   устройстве с установленным Happ.
-3. Подтвердите добавление профиля.
-
-Профиль уже содержит постоянные ссылки на latest `geoip.dat` и `geosite.dat`,
-поэтому Happ сможет обновлять геофайлы без переустановки профиля. Если ссылка
-не открывается из браузера, скопируйте её целиком в адресную строку.
-
-## 3x-ui
-
-Есть два варианта.
-
-### Замена стандартных geofiles
-
-Скачайте `geoip.dat` и `geosite.dat` из latest release в каталог Xray
-(`XUI_BIN_FOLDER`, обычно `/usr/local/x-ui/bin`), затем перезапустите Xray.
-После этого категории используются как обычно: `geosite:happ-proxy` и
-`geoip:private`.
-
-### Custom Geofiles в новых версиях 3x-ui
-
-Добавьте два URL через **Xray → Geofiles → Custom GeoSite / GeoIP sources** с
-алиасом `happ`. 3x-ui сохранит их как `geosite_happ.dat` и `geoip_happ.dat`.
-Для внешнего файла замените ссылки в `3x-ui-routing.json`, например:
+Download `geoip.dat` and `geosite.dat` into the Xray binary directory, or add
+them in **Xray → Geofiles → Custom GeoSite / GeoIP sources**. Custom geofiles
+are referenced using Xray's external form, for example:
 
 ```text
-geosite:happ-proxy       → ext:geosite_happ.dat:happ-proxy
-geoip:private            → ext:geoip_happ.dat:private
+ext:geosite_happ.dat:routing-proxy
+ext:geoip_happ.dat:private
 ```
 
-В разделе **Xray Configs → Routing Rules** установите теги outbound в
-`config/routing.json` равными фактическим тегам вашего сервера, затем вставьте
-содержимое `3x-ui-routing.json`. По умолчанию используются `direct`, `proxy` и
-`block` — они должны существовать в конфигурации Xray.
+Insert `3x-ui-routing.json` into the Xray routing configuration. Adjust
+`targets/xray.yaml` if the server uses outbound tags other than `direct`,
+`proxy` and `block`.
 
-## Локальная сборка
+## Development
 
-Нужны Git, Go, Python 3, curl и стандартная утилита `shasum`:
+Requirements: Git, Go, Python 3 and curl.
 
 ```bash
-make build
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+make PYTHON=.venv/bin/python configs
+make PYTHON=.venv/bin/python test
+make PYTHON=.venv/bin/python build
 ```
 
-Результат появится в `dist/`. Быстрая генерация JSON без скачивания geodata:
+`make configs` generates client artifacts without downloading geodata. The full
+build compiles `geosite.dat`, downloads and verifies `geoip.dat`, writes release
+metadata and validates the complete output.
 
-```bash
-make configs
-make test
-```
+CI runs unit tests and a full build for every pull request. The release workflow
+runs daily at 03:17 UTC and can also be started manually. Binary output in
+`dist/` is intentionally not committed.
 
-## Автоматизация и безопасность
-
-- CI проверяет Python-тесты и полную сборку на каждом Pull Request.
-- Ежедневный release workflow запускается в 03:17 UTC и доступен вручную.
-- Upstream `geoip.dat` принимается только при совпадении опубликованной SHA-256.
-- Release имеет уникальный тег, а `latest` всегда указывает на свежую успешную
-  сборку.
-- Workflow использует минимальные GitHub permissions: read в CI и contents:write
-  только в release job.
-
-Источники данных сохраняют собственные лицензии. Код этого репозитория — MIT.
+Data sources retain their respective licenses. Repository code is MIT licensed.
