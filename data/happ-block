@@ -1,0 +1,3 @@
+# Domains that must be blocked.
+# Add one rule per line, for example: domain:ads.example.com
+full:happ-block.invalid
