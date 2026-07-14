@@ -22,6 +22,8 @@ jobs:
         run: make configs
       - name: Audit registry coverage
         run: make coverage
+      - name: Smoke-test URDB Orchestrator CLI
+        run: ./urdb --help
       - name: Run tests
         run: make test
 
