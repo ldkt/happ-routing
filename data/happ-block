@@ -1,3 +1,2 @@
-# Domains that must be blocked.
-# Add one rule per line, for example: domain:ads.example.com
-full:happ-block.invalid
+# Backward-compatible alias. New rules belong in routing-block.
+include:routing-block

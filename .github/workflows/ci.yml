@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
       - name: Generate integration configs
         run: make configs
       - name: Run tests
@@ -29,6 +31,11 @@ jobs:
         with:
           go-version: stable
           cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
       - name: Build and validate all artifacts
         run: make build
       - uses: actions/upload-artifact@v4
