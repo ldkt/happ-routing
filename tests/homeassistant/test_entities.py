@@ -11,7 +11,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.urdb.const import CONF_API_URL, DOMAIN
 
 
-pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.usefixtures("enable_custom_integrations"),
+]
 
 
 STATUS = {
