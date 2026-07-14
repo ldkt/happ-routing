@@ -61,6 +61,7 @@ class HACSIntegrationStructureTest(unittest.TestCase):
         self.assertEqual(hacs["name"], "Universal Routing Database")
         self.assertEqual(strings.keys(), english.keys())
         self.assertEqual(strings.keys(), russian.keys())
+        self.assertTrue((COMPONENT / "brand" / "icon.png").is_file())
 
     def test_manual_yaml_installation_files_are_removed(self):
         self.assertFalse((ROOT / "packages" / "urdb.yaml").exists())
