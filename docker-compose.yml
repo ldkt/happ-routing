@@ -1,0 +1,21 @@
+services:
+  urdb-api:
+    image: python:3.13-slim
+    working_dir: /app
+    command:
+      - python
+      - -m
+      - homeassistant.server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    environment:
+      URDB_CURRENT_VERSION: ${URDB_CURRENT_VERSION:-development}
+      URDB_REPOSITORY: ${URDB_REPOSITORY:-ldkt/happ-routing}
+    ports:
+      - "8080:8080"
+    read_only: true
+    restart: unless-stopped
+    volumes:
+      - .:/app:ro
