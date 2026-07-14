@@ -1,0 +1,8 @@
+id: github
+name: GitHub
+category: developer
+geosite:
+  - github
+extra_domains: []
+ip_source: []
+status: stable

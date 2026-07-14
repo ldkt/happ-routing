@@ -1,0 +1,9 @@
+id: whatsapp
+name: WhatsApp
+category: messenger
+geosite:
+  - whatsapp
+extra_domains: []
+ip_source:
+  - opencck:whatsapp
+status: stable

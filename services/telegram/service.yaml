@@ -1,0 +1,9 @@
+id: telegram
+name: Telegram
+category: messenger
+geosite:
+  - telegram
+extra_domains: []
+ip_source:
+  - opencck:telegram
+status: stable
