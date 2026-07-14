@@ -53,6 +53,19 @@ class FakeReleaseClient:
         }
 
 
+class FakeUpdater:
+    def __init__(self) -> None:
+        self.update_calls = 0
+        self.restart_calls = 0
+
+    def update(self) -> dict[str, object]:
+        self.update_calls += 1
+        return {"accepted": True, "message": "Update scheduled"}
+
+    def restart(self) -> dict[str, object]:
+        self.restart_calls += 1
+        return {"accepted": True, "message": "Restart scheduled"}
+
 class StatusServiceTest(unittest.TestCase):
     def test_status_contains_update_and_release_changes(self):
         service = StatusService(FakeReleaseClient(), clock=lambda: CHECKED_AT)
@@ -83,17 +96,31 @@ class StatusServiceTest(unittest.TestCase):
 
         self.assertEqual(service.get_changes(), self._golden("changes.json"))
 
-    def test_dry_run_update_only_checks_and_logs(self):
+    def test_update_checks_release_and_delegates_to_sidecar(self):
         client = FakeReleaseClient()
-        service = StatusService(client, clock=lambda: CHECKED_AT)
+        updater = FakeUpdater()
+        service = StatusService(client, clock=lambda: CHECKED_AT, updater=updater)
 
         with self.assertLogs("urdb.homeassistant", level="INFO") as logs:
-            result = service.dry_run_update()
+            result = service.request_update()
 
-        self.assertEqual(result, {"accepted": True, "message": "Dry-run update"})
+        self.assertEqual(result, {"accepted": True, "message": "Update scheduled"})
         self.assertEqual(client.check_calls, 1)
         self.assertEqual(client.info_calls, 0)
+        self.assertEqual(updater.update_calls, 1)
         self.assertIn("has_update=True", logs.output[0])
+
+    def test_restart_delegates_to_sidecar(self):
+        updater = FakeUpdater()
+        service = StatusService(
+            FakeReleaseClient(), clock=lambda: CHECKED_AT, updater=updater
+        )
+
+        self.assertEqual(
+            service.request_restart(),
+            {"accepted": True, "message": "Restart scheduled"},
+        )
+        self.assertEqual(updater.restart_calls, 1)
 
     def _golden(self, name: str) -> dict[str, object]:
         with (GOLDEN / name).open(encoding="utf-8") as source:
@@ -102,7 +129,9 @@ class StatusServiceTest(unittest.TestCase):
 
 class StatusHTTPTest(unittest.TestCase):
     def setUp(self) -> None:
-        service = StatusService(FakeReleaseClient(), clock=lambda: CHECKED_AT)
+        service = StatusService(
+            FakeReleaseClient(), clock=lambda: CHECKED_AT, updater=FakeUpdater()
+        )
         self.server = create_server(("127.0.0.1", 0), service)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -140,14 +169,22 @@ class StatusHTTPTest(unittest.TestCase):
         self.assertEqual(payload["checked_at"], "2026-07-14T21:00:00Z")
         self.assertEqual(payload["health"], "ok")
 
-    def test_post_update_is_dry_run(self):
+    def test_post_update_schedules_safe_rollout(self):
         request = Request(self.base_url + "/api/update", method="POST")
         with self.assertLogs("urdb.homeassistant", level="INFO"):
             with urlopen(request, timeout=2) as response:
                 payload = json.load(response)
 
         self.assertEqual(response.status, 202)
-        self.assertEqual(payload, {"accepted": True, "message": "Dry-run update"})
+        self.assertEqual(payload, {"accepted": True, "message": "Update scheduled"})
+
+    def test_post_restart_schedules_container_restart(self):
+        request = Request(self.base_url + "/api/restart", method="POST")
+        with urlopen(request, timeout=2) as response:
+            payload = json.load(response)
+
+        self.assertEqual(response.status, 202)
+        self.assertEqual(payload, {"accepted": True, "message": "Restart scheduled"})
 
     def test_unknown_endpoint_returns_404(self):
         with self.assertRaises(HTTPError) as context:
