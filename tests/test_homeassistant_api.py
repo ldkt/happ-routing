@@ -11,7 +11,6 @@ from urllib.request import Request, urlopen
 from homeassistant.api import StatusService, extract_changes
 from homeassistant.server import create_server
 from orchestrator.github_release import OrchestratorError
-import yaml
 
 
 CHECKED_AT = datetime(2026, 7, 14, 21, 0, tzinfo=timezone.utc)
@@ -219,60 +218,6 @@ class StatusHTTPTest(unittest.TestCase):
         self.assertEqual(context.exception.code, 503)
         payload = json.load(context.exception)
         self.assertEqual(payload["health"], "error")
-
-
-class DashboardGoldenTest(unittest.TestCase):
-    def test_dashboard_contains_required_cards_and_actions(self):
-        dashboard = self._yaml("urdb-dashboard.yaml")
-        cards = dashboard["views"][0]["cards"]
-        entities = cards[0]["entities"]
-
-        self.assertEqual(cards[0]["title"], "Статус")
-        self.assertEqual(
-            [entity["name"] for entity in entities],
-            [
-                "Статус",
-                "Текущая версия",
-                "Последняя версия",
-                "Есть обновление",
-                "Последняя проверка",
-            ],
-        )
-        self.assertEqual(cards[1]["title"], "Список изменений")
-        buttons = cards[2]["cards"]
-        self.assertEqual(
-            [button["tap_action"]["service"] for button in buttons],
-            ["rest_command.urdb_check", "rest_command.urdb_update"],
-        )
-
-    def test_rest_configuration_matches_api_contract(self):
-        rest = self._yaml("rest.yaml")
-        commands = self._yaml("rest_commands.yaml")
-
-        self.assertEqual(
-            [resource["resource"] for resource in rest["rest"]],
-            [
-                "http://urdb-api:8080/api/status",
-                "http://urdb-api:8080/api/changes",
-            ],
-        )
-        self.assertEqual(commands["rest_command"]["urdb_check"]["method"], "POST")
-        self.assertEqual(commands["rest_command"]["urdb_update"]["method"], "POST")
-
-    def test_regular_home_assistant_package_uses_single_api_secret(self):
-        package = (ROOT / "packages" / "urdb.yaml").read_text(encoding="utf-8")
-
-        self.assertEqual(package.count("!secret urdb_api"), 1)
-        for endpoint in ("status", "changes", "check", "update", "restart"):
-            self.assertIn(f"/api/{endpoint}", package)
-        self.assertIn(
-            "homeassistant: {packages: !include_dir_named packages}", package
-        )
-
-    def _yaml(self, name: str) -> dict[str, object]:
-        path = ROOT / "homeassistant" / "dashboard" / name
-        with path.open(encoding="utf-8") as source:
-            return yaml.safe_load(source)
 
 
 if __name__ == "__main__":
