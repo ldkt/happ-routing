@@ -1,5 +1,0 @@
-domains:
-  - geosite:private
-  - geosite:routing-direct
-ips:
-  - geoip:private

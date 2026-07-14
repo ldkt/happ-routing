@@ -1,8 +1,112 @@
-version: 1
-name: Universal Routing Policy
-domain_strategy: IPIfNonMatch
-action_order:
-  - block
-  - direct
-  - proxy
-fallback: direct
+schema_version: 1
+kind: RoutingPolicy
+
+metadata:
+  name: Universal Routing Policy
+  revision: 1
+
+egresses:
+  internet:
+    description: Default public internet path
+  vpn:
+    description: Privacy proxy path
+  block:
+    description: Rejected traffic path
+
+domain_sets:
+  advertising:
+    source:
+      provider: v2fly-geosite
+      resource: category-ads-all
+  private-domains:
+    source:
+      provider: v2fly-geosite
+      resource: private
+  routing-block:
+    source:
+      provider: v2fly-geosite
+      resource: routing-block
+  routing-direct:
+    source:
+      provider: v2fly-geosite
+      resource: routing-direct
+  routing-proxy:
+    source:
+      provider: v2fly-geosite
+      resource: routing-proxy
+
+ip_sets:
+  private-addresses:
+    source:
+      provider: v2fly-geoip
+      resource: private
+
+objects:
+  advertising:
+    domain_sets:
+      - advertising
+  private-addresses:
+    ip_sets:
+      - private-addresses
+  private-domains:
+    domain_sets:
+      - private-domains
+  routing-block:
+    domain_sets:
+      - routing-block
+  routing-direct:
+    domain_sets:
+      - routing-direct
+  routing-proxy:
+    domain_sets:
+      - routing-proxy
+
+categories:
+  blocked-destinations:
+    objects:
+      - advertising
+      - routing-block
+  direct-destinations:
+    objects:
+      - private-domains
+      - routing-direct
+      - private-addresses
+
+rules:
+  - id: block-advertising
+    match:
+      object: advertising
+    action:
+      egress: block
+
+  - id: block-custom-domains
+    match:
+      object: routing-block
+    action:
+      egress: block
+
+  - id: direct-private-domains
+    match:
+      object: private-domains
+    action:
+      egress: internet
+
+  - id: direct-custom-domains
+    match:
+      object: routing-direct
+    action:
+      egress: internet
+
+  - id: direct-private-addresses
+    match:
+      object: private-addresses
+    action:
+      egress: internet
+
+  - id: proxy-custom-domains
+    match:
+      object: routing-proxy
+    action:
+      egress: vpn
+
+fallback: internet

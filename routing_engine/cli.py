@@ -7,13 +7,14 @@ from pathlib import Path
 
 from .generators import GENERATORS
 from .loader import load_policy, load_target
+from .normalize import normalize_policy
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def generate_all(policy_dir: Path, targets_dir: Path, output: Path) -> None:
-    policy = load_policy(policy_dir)
+    policy = normalize_policy(load_policy(policy_dir))
     output.mkdir(parents=True, exist_ok=True)
     seen: set[str] = set()
     for target_path in sorted(targets_dir.glob("*.yaml")):

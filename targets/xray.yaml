@@ -1,4 +1,9 @@
 generator: xray
+domain_strategy: IPIfNonMatch
+egress_bindings:
+  internet: direct
+  vpn: proxy
+  block: block
 outbound_tags:
   direct: direct
   proxy: proxy
