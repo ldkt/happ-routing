@@ -1,0 +1,8 @@
+Registry
+Services: 5
+
+Categories:
+video .......... 1
+messenger ...... 2
+ai ............. 1
+developer ...... 1

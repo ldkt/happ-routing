@@ -1,0 +1,43 @@
+Category: video
+
+Current: 2 entries
+Registry: 2 entries
+
+Match
+
+Category: messenger
+
+Current: unavailable (proxy-messenger)
+Registry: 2 entries
+
+Only in Registry:
+include:telegram
+include:whatsapp
+
+Category: ai
+
+Current: 12 entries
+Registry: 2 entries
+
+Missing from Registry:
+openai.com
+oaistatic.com
+oaiusercontent.com
+claude.ai
+anthropic.com
+gemini.google.com
+ai.google.dev
+perplexity.ai
+copilot.microsoft.com
+x.ai
+grok.com
+
+Only in Registry:
+include:openai
+
+Category: developer
+
+Current: 1 entries
+Registry: 1 entries
+
+Match
