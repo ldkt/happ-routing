@@ -1,21 +1,29 @@
 services:
   urdb-api:
-    image: python:3.13-slim
-    working_dir: /app
-    command:
-      - python
-      - -m
-      - homeassistant.server
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8080"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: urdb-api:local
     environment:
+      URDB_API_HOST: 0.0.0.0
+      URDB_API_PORT: "8080"
       URDB_CURRENT_VERSION: ${URDB_CURRENT_VERSION:-development}
       URDB_REPOSITORY: ${URDB_REPOSITORY:-ldkt/happ-routing}
     ports:
-      - "8080:8080"
+      - "${URDB_API_PORT:-8080}:8080"
     read_only: true
     restart: unless-stopped
-    volumes:
-      - .:/app:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, socket;
+          socket.create_connection(
+              ('127.0.0.1', int(os.environ['URDB_API_PORT'])), 2
+          ).close()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
