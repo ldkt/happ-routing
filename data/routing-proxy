@@ -1,3 +1,8 @@
 # Domains that must use the proxy.
 # Add one rule per line, for example: domain:example.com
-full:routing-proxy.invalid
+# YouTube includes its video CDN, image hosts, API endpoints and regional TLDs.
+include:youtube
+
+# Used by Google/YouTube to deliver application and media assets, but not part
+# of domain-list-community's youtube category.
+gvt1.com
