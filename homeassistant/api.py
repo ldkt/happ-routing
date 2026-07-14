@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 from typing import Callable, Protocol
+
+
+LOGGER = logging.getLogger("urdb.homeassistant")
 
 
 class ReleaseClient(Protocol):
@@ -61,6 +65,38 @@ class StatusService:
             .replace("+00:00", "Z"),
             "health": "ok",
         }
+
+    def get_changes(self) -> dict[str, object]:
+        """Return changes from the latest release's explicit changes section."""
+
+        release = self._client.get_release_info()
+        version = _string(release, "version")
+        notes = release.get("notes")
+        if not isinstance(notes, str):
+            raise StatusAPIError("Orchestrator returned invalid release notes")
+        return {"version": version, "changes": extract_changes(notes)}
+
+    def check_now(self) -> dict[str, object]:
+        """Run an immediate release check and return the existing status model."""
+
+        return self.get_status()
+
+    def dry_run_update(self) -> dict[str, object]:
+        """Check for an update and record intent without downloading or installing."""
+
+        update = self._client.check_updates()
+        current_version = _string(update, "current_version")
+        latest_version = _string(update, "latest_version")
+        has_update = update.get("has_update")
+        if not isinstance(has_update, bool):
+            raise StatusAPIError("Orchestrator returned invalid has_update")
+        LOGGER.info(
+            "Dry-run update: current_version=%s latest_version=%s has_update=%s",
+            current_version,
+            latest_version,
+            has_update,
+        )
+        return {"accepted": True, "message": "Dry-run update"}
 
 
 def extract_changes(notes: str) -> list[str]:

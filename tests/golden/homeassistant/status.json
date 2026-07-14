@@ -1,0 +1,12 @@
+{
+  "current_version": "routing-20260713",
+  "latest_version": "routing-20260714",
+  "has_update": true,
+  "changes": [
+    "YouTube",
+    "GitHub",
+    "ChatGPT"
+  ],
+  "checked_at": "2026-07-14T21:00:00Z",
+  "health": "ok"
+}

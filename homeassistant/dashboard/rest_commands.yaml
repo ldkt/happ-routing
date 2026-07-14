@@ -1,0 +1,12 @@
+rest_command:
+  urdb_check:
+    url: http://urdb-api:8080/api/check
+    method: POST
+    content_type: application/json
+    timeout: 30
+
+  urdb_update:
+    url: http://urdb-api:8080/api/update
+    method: POST
+    content_type: application/json
+    timeout: 30
