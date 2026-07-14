@@ -47,7 +47,7 @@ class HACSIntegrationStructureTest(unittest.TestCase):
 
         self.assertIn("URDBStatusSensor", sensor)
         self.assertIn("URDBChangesSensor", sensor)
-        for action in ("check_updates", "update", "restart"):
+        for action in ("check", "update", "restart"):
             self.assertIn(f'key="{action}"', button)
         self.assertIn("DeviceInfo(", entity)
         self.assertTrue((COMPONENT / "diagnostics.py").is_file())

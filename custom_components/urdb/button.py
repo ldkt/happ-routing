@@ -22,7 +22,7 @@ class URDBButtonDescription(ButtonEntityDescription):
 
 BUTTONS = (
     URDBButtonDescription(
-        key="check_updates",
+        key="check",
         translation_key="check_updates",
         icon="mdi:refresh",
         action="check",
@@ -56,7 +56,7 @@ class URDBButton(URDBEntity, ButtonEntity):
         super().__init__(coordinator, entry_id)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_suggested_object_id = f"urdb_{description.key}"
+        self.entity_id = f"button.{description.key}"
 
     async def async_press(self) -> None:
         action: Callable[[], Awaitable[dict]] = getattr(

@@ -9,6 +9,23 @@ permissions:
   contents: read
 
 jobs:
+  homeassistant:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Home Assistant test dependencies
+        run: python -m pip install -r requirements-homeassistant-test.txt
+      - name: Test Home Assistant Config Entry entities
+        run: |
+          mkdir -p /tmp/urdb-ha-test/tests
+          cp -R custom_components /tmp/urdb-ha-test/
+          cp -R tests/homeassistant/. /tmp/urdb-ha-test/tests/
+          cd /tmp/urdb-ha-test
+          python -m pytest -q --asyncio-mode=auto tests
+
   test:
     runs-on: ubuntu-latest
     steps:
