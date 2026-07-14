@@ -1,0 +1,3 @@
+# Domains that must use the proxy.
+# Add one rule per line, for example: domain:example.com
+full:happ-proxy.invalid
