@@ -1,7 +1,12 @@
 generator: happ
 name: Universal Routing
 global_proxy: false
+domain_strategy: IPIfNonMatch
 release_base_url: https://github.com/ldkt/happ-routing/releases/latest/download
+egress_bindings:
+  internet: direct
+  vpn: proxy
+  block: block
 dns:
   remote:
     type: DoH

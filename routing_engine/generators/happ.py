@@ -7,21 +7,21 @@ import json
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
-from ..model import Action, RoutingPolicy
-from .base import GeneratedFile
+from ..model import NormalizedPolicy
+from .base import GeneratedFile, collect_compatible_rules
 
 
 class HappGenerator:
     def generate(
-        self, policy: RoutingPolicy, settings: Mapping[str, Any]
+        self, policy: NormalizedPolicy, settings: Mapping[str, Any]
     ) -> Sequence[GeneratedFile]:
         dns = settings["dns"]
         remote_host = urlparse(dns["remote"]["domain"]).hostname
         domestic_host = urlparse(dns["domestic"]["domain"]).hostname
         release_url = str(settings["release_base_url"]).rstrip("/")
-        rules = policy.rules
+        rules = collect_compatible_rules(policy, settings)
         profile = {
-            "Name": settings.get("name", policy.name),
+            "Name": settings.get("name", policy.metadata.name),
             "GlobalProxy": str(bool(settings.get("global_proxy", False))).lower(),
             "RemoteDNSType": dns["remote"]["type"],
             "RemoteDNSDomain": dns["remote"]["domain"],
@@ -35,13 +35,13 @@ class HappGenerator:
                 remote_host: dns["remote"]["ip"],
                 domestic_host: dns["domestic"]["ip"],
             },
-            "DirectSites": list(rules[Action.DIRECT].domains),
-            "DirectIp": list(rules[Action.DIRECT].ips),
-            "ProxySites": list(rules[Action.PROXY].domains),
-            "ProxyIp": list(rules[Action.PROXY].ips),
-            "BlockSites": list(rules[Action.BLOCK].domains),
-            "BlockIp": list(rules[Action.BLOCK].ips),
-            "DomainStrategy": policy.domain_strategy,
+            "DirectSites": rules["direct"]["domains"],
+            "DirectIp": rules["direct"]["ips"],
+            "ProxySites": rules["proxy"]["domains"],
+            "ProxyIp": rules["proxy"]["ips"],
+            "BlockSites": rules["block"]["domains"],
+            "BlockIp": rules["block"]["ips"],
+            "DomainStrategy": settings["domain_strategy"],
         }
         pretty = json.dumps(profile, ensure_ascii=False, indent=2) + "\n"
         compact = json.dumps(profile, ensure_ascii=False, separators=(",", ":"))
