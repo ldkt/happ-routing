@@ -1,0 +1,10 @@
+id: youtube
+name: YouTube
+category: video
+geosite:
+  - youtube
+extra_domains:
+  - gvt1.com
+ip_source:
+  - opencck:youtube
+status: stable

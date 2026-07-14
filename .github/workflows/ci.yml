@@ -20,6 +20,10 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Generate integration configs
         run: make configs
+      - name: Audit registry coverage
+        run: make coverage
+      - name: Smoke-test URDB Orchestrator CLI
+        run: ./urdb --help
       - name: Run tests
         run: make test
 
@@ -43,3 +47,12 @@ jobs:
           name: happ-routing
           path: dist/
           if-no-files-found: error
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose
+        run: docker compose --env-file .env.example config
+      - name: Build URDB API image
+        run: docker compose --env-file .env.example build

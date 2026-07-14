@@ -1,0 +1,9 @@
+id: chatgpt
+name: ChatGPT
+category: ai
+geosite:
+  - openai
+extra_domains:
+  - chatgpt.com
+ip_source: []
+status: stable
