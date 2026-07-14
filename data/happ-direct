@@ -1,3 +1,2 @@
-# Domains that must bypass the proxy.
-# Supported syntax: domain:, full:, keyword:, regexp: and include:.
-domain:localhost
+# Backward-compatible alias. New rules belong in routing-direct.
+include:routing-direct

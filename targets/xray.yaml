@@ -1,0 +1,5 @@
+generator: xray
+outbound_tags:
+  direct: direct
+  proxy: proxy
+  block: block

@@ -1,0 +1,13 @@
+generator: happ
+name: Universal Routing
+global_proxy: false
+release_base_url: https://github.com/ldkt/happ-routing/releases/latest/download
+dns:
+  remote:
+    type: DoH
+    domain: https://dns.google/dns-query
+    ip: 8.8.8.8
+  domestic:
+    type: DoH
+    domain: https://dns.yandex.net/dns-query
+    ip: 77.88.8.8

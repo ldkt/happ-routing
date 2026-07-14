@@ -1,0 +1,8 @@
+version: 1
+name: Universal Routing Policy
+domain_strategy: IPIfNonMatch
+action_order:
+  - block
+  - direct
+  - proxy
+fallback: direct

@@ -50,7 +50,9 @@ def main() -> None:
             fail(f"{name} is unexpectedly small")
 
     sums = args.dist / "SHA256SUMS"
-    if sums.exists():
+    # Config-only generation may intentionally leave checksums from an older
+    # full geodata build in dist. Full builds always validate every digest.
+    if sums.exists() and not args.allow_missing_dat:
         for line in sums.read_text(encoding="utf-8").splitlines():
             expected, name = line.split(maxsplit=1)
             path = args.dist / name
