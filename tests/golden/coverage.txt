@@ -1,0 +1,55 @@
+Registry coverage
+
+Services registered:
+5 / 22
+22.7 %
+
+Services by category:
+Video ............ 1
+Messenger ........ 2
+AI ............... 1
+Developer ........ 1
+
+Coverage by service:
+
+Video
+✓ YouTube
+
+Messenger
+✓ Telegram
+✓ WhatsApp
+✗ Signal
+✗ Discord
+✗ Viber
+
+Social
+✗ Reddit
+✗ X
+✗ Instagram
+✗ Facebook
+
+AI
+✓ ChatGPT
+✗ Claude
+✗ Gemini
+✗ Copilot
+✗ Perplexity
+
+Developer
+✓ GitHub
+
+Gaming
+✗ Steam
+✗ Epic
+✗ Battle.net
+
+Streaming
+✗ Netflix
+✗ Disney
+✗ Prime Video
+
+Legacy proxy comparison:
+Registry and current: YouTube, Telegram, ChatGPT, GitHub
+Registry only: WhatsApp
+Current only: Claude, Gemini, Copilot, Perplexity, Reddit, X
+Missing from both: Signal, Discord, Viber, Instagram, Facebook, Steam, Epic, Battle.net, Netflix, Disney, Prime Video

@@ -1,4 +1,4 @@
-.PHONY: build configs registry compare-registry test clean
+.PHONY: build configs registry compare-registry coverage test clean
 
 PYTHON ?= python3
 
@@ -13,6 +13,9 @@ registry:
 
 compare-registry:
 	$(PYTHON) -m routing_engine.registry_cli compare
+
+coverage:
+	$(PYTHON) -m routing_engine.coverage
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
