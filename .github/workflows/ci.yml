@@ -24,7 +24,7 @@ jobs:
           cp -R custom_components /tmp/urdb-ha-test/
           cp -R tests/homeassistant/. /tmp/urdb-ha-test/tests/
           cd /tmp/urdb-ha-test
-          python -m pytest -q tests
+          python -m pytest -q --asyncio-mode=auto tests
 
   test:
     runs-on: ubuntu-latest
