@@ -1,0 +1,3 @@
+# Domains that must bypass the proxy.
+# Supported syntax: domain:, full:, keyword:, regexp: and include:.
+domain:localhost

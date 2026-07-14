@@ -42,8 +42,8 @@ curl --fail --location --retry 3 --output "$DIST/geoip.dat.sha256sum.upstream" \
   rm geoip.dat.sha256sum.upstream
 )
 
-python3 "$ROOT/scripts/generate_configs.py" --output "$DIST"
-python3 "$ROOT/scripts/release_metadata.py" --dist "$DIST" \
+"${PYTHON:-python3}" "$ROOT/scripts/generate_configs.py" --output "$DIST"
+"${PYTHON:-python3}" "$ROOT/scripts/release_metadata.py" --dist "$DIST" \
   --geosite-source "$(git -C "$CACHE/domain-list-community" rev-parse HEAD)"
 
 (
@@ -52,4 +52,4 @@ python3 "$ROOT/scripts/release_metadata.py" --dist "$DIST" \
     happ-routing-link.txt 3x-ui-routing.json release.json > SHA256SUMS
 )
 
-python3 "$ROOT/scripts/validate.py" --dist "$DIST"
+"${PYTHON:-python3}" "$ROOT/scripts/validate.py" --dist "$DIST"
