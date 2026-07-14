@@ -9,6 +9,7 @@ from pathlib import Path
 from routing_engine.cli import generate_all
 from routing_engine.loader import load_policy
 from routing_engine.model import (
+    Action,
     AllMatcher,
     CategoryRef,
     DestinationCIDR,
@@ -25,11 +26,13 @@ from routing_engine.model import (
     ResolvedAny,
     ResolvedDomainSet,
     ResolvedNot,
+    RoutingPolicy,
 )
 from routing_engine.normalize import normalize_policy
 
 
 ROOT = Path(__file__).resolve().parents[1]
+LEGACY_POLICY = ROOT / "tests" / "fixtures" / "legacy"
 COMPATIBILITY_HASHES = {
     "happ-routing.json": "725d5cb79686a3b671922d37286974ad1d2878724e51f247e6a00bfe66145061",
     "happ-routing-link.txt": "b5e4c2b2e130d74a693be38ad98e1c7b943b974aefe947bced6b46b5bf39793f",
@@ -64,6 +67,40 @@ def minimal_policy(match: str = "domain: example.com", extra: str = "") -> str:
 
 
 class CanonicalPolicyTest(unittest.TestCase):
+    def test_legacy_policy_loads_as_canonical_schema_v1(self):
+        policy = load_policy(LEGACY_POLICY)
+        self.assertIsInstance(policy, RoutingPolicy)
+        self.assertEqual(policy.schema_version, 1)
+        self.assertEqual(policy.kind, "RoutingPolicy")
+        self.assertTrue(all(isinstance(rule.action, Action) for rule in policy.rules))
+        self.assertEqual(normalize_policy(policy).fallback, "internet")
+
+    def test_legacy_policy_produces_byte_identical_happ_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            generate_all(LEGACY_POLICY, ROOT / "targets", output)
+            for name in ("happ-routing.json", "happ-routing-link.txt"):
+                actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+                self.assertEqual(actual, COMPATIBILITY_HASHES[name], name)
+
+    def test_legacy_policy_produces_byte_identical_xray_artifact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            generate_all(LEGACY_POLICY, ROOT / "targets", output)
+            name = "3x-ui-routing.json"
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            self.assertEqual(actual, COMPATIBILITY_HASHES[name], name)
+
+    def test_schema_v1_is_the_only_canonical_language(self):
+        canonical = load_policy(ROOT / "policy")
+        migrated = load_policy(LEGACY_POLICY)
+        self.assertEqual(type(canonical), RoutingPolicy)
+        self.assertEqual(type(migrated), RoutingPolicy)
+        legacy_bucket_names = {"direct.yaml", "proxy.yaml", "block.yaml"}
+        self.assertFalse(
+            any(path.name in legacy_bucket_names for path in (ROOT / "policy").iterdir())
+        )
+
     def test_repository_policy_is_schema_v1_and_deterministically_ordered(self):
         policy = load_policy(ROOT / "policy")
         normalized = normalize_policy(policy)

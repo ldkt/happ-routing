@@ -551,11 +551,22 @@ def _rule(value: Any, index: int, path: str) -> Rule:
 
 
 def load_policy(path: Path) -> RoutingPolicy:
-    """Parse a strict canonical schema-v1 policy document."""
+    """Load policy input and return only the canonical schema-v1 model.
 
-    if path.is_dir():
-        path = path / "policy.yaml"
-    raw = _load_yaml(path)
+    Legacy action-bucket input is accepted temporarily and migrated at this
+    boundary. No legacy representation crosses into normalization or code
+    generation.
+    """
+
+    policy_dir = path if path.is_dir() else path.parent
+    policy_path = policy_dir / "policy.yaml" if path.is_dir() else path
+    raw = _load_yaml(policy_path)
+    if "schema_version" not in raw and "version" in raw:
+        from .legacy import migrate_legacy_policy
+
+        return migrate_legacy_policy(policy_dir, raw)
+
+    path = policy_path
     _strict_keys(
         raw,
         "policy",
