@@ -1,4 +1,4 @@
-"""Minimal HTTP server exposing the read-only URDB status endpoint."""
+"""Minimal HTTP server exposing the Home Assistant-facing URDB API."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import logging
 import os
 from typing import Type
 from urllib.parse import urlsplit
@@ -32,14 +33,19 @@ def create_server(
 def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
     class StatusRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            if urlsplit(self.path).path != "/api/status":
-                self._json_response(
-                    HTTPStatus.NOT_FOUND,
-                    {"health": "error", "error": "not found"},
-                )
+            path = urlsplit(self.path).path
+            if path == "/api/status":
+                operation = service.get_status
+            elif path == "/api/changes":
+                operation = service.get_changes
+            elif path in {"/api/check", "/api/update"}:
+                self._method_not_allowed("POST")
+                return
+            else:
+                self._not_found()
                 return
             try:
-                response = service.get_status()
+                response = operation()
             except (OrchestratorError, StatusAPIError) as error:
                 self._json_response(
                     HTTPStatus.SERVICE_UNAVAILABLE,
@@ -49,8 +55,38 @@ def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
             self._json_response(HTTPStatus.OK, response)
 
         def do_POST(self) -> None:
+            path = urlsplit(self.path).path
+            if path == "/api/check":
+                operation = service.check_now
+                status = HTTPStatus.OK
+            elif path == "/api/update":
+                operation = service.dry_run_update
+                status = HTTPStatus.ACCEPTED
+            elif path in {"/api/status", "/api/changes"}:
+                self._method_not_allowed("GET")
+                return
+            else:
+                self._not_found()
+                return
+            try:
+                response = operation()
+            except (OrchestratorError, StatusAPIError) as error:
+                self._json_response(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"health": "error", "error": str(error)},
+                )
+                return
+            self._json_response(status, response)
+
+        def _not_found(self) -> None:
+            self._json_response(
+                HTTPStatus.NOT_FOUND,
+                {"health": "error", "error": "not found"},
+            )
+
+        def _method_not_allowed(self, allow: str) -> None:
             self.send_response(HTTPStatus.METHOD_NOT_ALLOWED)
-            self.send_header("Allow", "GET")
+            self.send_header("Allow", allow)
             self.send_header("Content-Length", "0")
             self.end_headers()
 
@@ -72,6 +108,10 @@ def make_handler(service: StatusService) -> Type[BaseHTTPRequestHandler]:
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     parser = argparse.ArgumentParser(prog="urdb-api")
     parser.add_argument("--host", default=os.environ.get("URDB_API_HOST", "0.0.0.0"))
     parser.add_argument(

@@ -1,0 +1,53 @@
+title: URDB
+views:
+  - title: URDB
+    path: urdb
+    icon: mdi:routes
+    cards:
+      - type: entities
+        title: Статус
+        entities:
+          - entity: sensor.urdb_status
+            name: Статус
+          - type: attribute
+            entity: sensor.urdb_status
+            attribute: current_version
+            name: Текущая версия
+          - type: attribute
+            entity: sensor.urdb_status
+            attribute: latest_version
+            name: Последняя версия
+          - type: attribute
+            entity: sensor.urdb_status
+            attribute: has_update
+            name: Есть обновление
+          - type: attribute
+            entity: sensor.urdb_status
+            attribute: checked_at
+            name: Последняя проверка
+
+      - type: markdown
+        title: Список изменений
+        content: >-
+          {% set changes = state_attr('sensor.urdb_changes', 'changes') or [] %}
+          {% if changes %}
+          {% for item in changes %}- {{ item }}
+          {% endfor %}
+          {% else %}
+          Изменений нет.
+          {% endif %}
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Проверить обновления
+            icon: mdi:refresh
+            tap_action:
+              action: call-service
+              service: rest_command.urdb_check
+          - type: button
+            name: Обновить
+            icon: mdi:download
+            tap_action:
+              action: call-service
+              service: rest_command.urdb_update
