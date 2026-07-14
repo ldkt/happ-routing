@@ -259,6 +259,16 @@ class DashboardGoldenTest(unittest.TestCase):
         self.assertEqual(commands["rest_command"]["urdb_check"]["method"], "POST")
         self.assertEqual(commands["rest_command"]["urdb_update"]["method"], "POST")
 
+    def test_regular_home_assistant_package_uses_single_api_secret(self):
+        package = (ROOT / "packages" / "urdb.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(package.count("!secret urdb_api"), 1)
+        for endpoint in ("status", "changes", "check", "update", "restart"):
+            self.assertIn(f"/api/{endpoint}", package)
+        self.assertIn(
+            "homeassistant: {packages: !include_dir_named packages}", package
+        )
+
     def _yaml(self, name: str) -> dict[str, object]:
         path = ROOT / "homeassistant" / "dashboard" / name
         with path.open(encoding="utf-8") as source:
