@@ -13,6 +13,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RoutingEngineTest(unittest.TestCase):
+    def test_routing_proxy_includes_youtube_and_gvt1(self):
+        rules = {
+            line.strip()
+            for line in (ROOT / "data" / "routing-proxy").read_text().splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        self.assertIn("include:youtube", rules)
+        self.assertIn("gvt1.com", rules)
+
     def test_policy_owns_precedence_and_fallback(self):
         policy = load_policy(ROOT / "policy")
         self.assertEqual(
