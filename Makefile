@@ -1,4 +1,4 @@
-.PHONY: build configs test clean
+.PHONY: build configs keenetic test clean
 
 PYTHON ?= python3
 
@@ -7,6 +7,9 @@ build:
 
 configs:
 	$(PYTHON) scripts/generate_configs.py
+
+keenetic:
+	$(PYTHON) scripts/generate_keenetic.py
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v
