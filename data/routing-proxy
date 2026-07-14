@@ -1,3 +1,6 @@
-# Domains that must use the proxy.
-# Add one rule per line, for example: domain:example.com
-full:routing-proxy.invalid
+# Aggregate proxy policy. Rules belong to the modules below, not this file.
+include:proxy-ai
+include:proxy-video
+include:proxy-dev
+include:proxy-social
+include:proxy-ipcheck
