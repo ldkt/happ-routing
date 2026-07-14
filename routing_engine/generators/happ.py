@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlparse
 
 from ..model import Action, RoutingPolicy
 from .base import GeneratedFile
@@ -15,6 +16,8 @@ class HappGenerator:
         self, policy: RoutingPolicy, settings: Mapping[str, Any]
     ) -> Sequence[GeneratedFile]:
         dns = settings["dns"]
+        remote_host = urlparse(dns["remote"]["domain"]).hostname
+        domestic_host = urlparse(dns["domestic"]["domain"]).hostname
         release_url = str(settings["release_base_url"]).rstrip("/")
         rules = policy.rules
         profile = {
@@ -29,8 +32,8 @@ class HappGenerator:
             "Geoipurl": f"{release_url}/geoip.dat",
             "Geositeurl": f"{release_url}/geosite.dat",
             "DnsHosts": {
-                "cloudflare-dns.com": dns["remote"]["ip"],
-                "dns.google": dns["domestic"]["ip"],
+                remote_host: dns["remote"]["ip"],
+                domestic_host: dns["domestic"]["ip"],
             },
             "DirectSites": list(rules[Action.DIRECT].domains),
             "DirectIp": list(rules[Action.DIRECT].ips),

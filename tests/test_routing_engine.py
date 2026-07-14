@@ -39,6 +39,22 @@ class RoutingEngineTest(unittest.TestCase):
             payload = link.removeprefix("happ://routing/onadd/")
             self.assertEqual(profile, json.loads(base64.b64decode(payload)))
 
+    def test_happ_uses_google_remote_and_yandex_domestic_dns(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            generate_all(ROOT / "policy", ROOT / "targets", output)
+            profile = json.loads((output / "happ-routing.json").read_text())
+            self.assertEqual(profile["RemoteDNSDomain"], "https://dns.google/dns-query")
+            self.assertEqual(profile["RemoteDNSIP"], "8.8.8.8")
+            self.assertEqual(
+                profile["DomesticDNSDomain"], "https://dns.yandex.net/dns-query"
+            )
+            self.assertEqual(profile["DomesticDNSIP"], "77.88.8.8")
+            self.assertEqual(
+                profile["DnsHosts"],
+                {"dns.google": "8.8.8.8", "dns.yandex.net": "77.88.8.8"},
+            )
+
     def test_xray_generator_preserves_policy_order(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
