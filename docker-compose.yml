@@ -37,6 +37,7 @@ services:
       URDB_UPDATER_TOKEN: ${URDB_UPDATER_TOKEN:-replace-with-a-long-random-token}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/urdb:/opt/urdb
       - ./:/deployment:ro
     read_only: true
     tmpfs:
