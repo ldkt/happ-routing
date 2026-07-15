@@ -549,7 +549,7 @@ o4?.({ LitElement: i4 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
 // custom_components/urdb/frontend/src/urdb-card.js
-var INTEGRATION_VERSION = "0.4.0";
+var INTEGRATION_VERSION = "0.4.1";
 var DEFAULT_CONFIG = {
   status_entity: "sensor.urdb_status",
   changes_entity: "sensor.urdb_changes",
@@ -667,9 +667,9 @@ var URDBCard = class extends i4 {
     .activity { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 13px; border:1px solid var(--divider-color); border-radius:12px; }
     .activity-main { display:flex; align-items:center; gap:10px; min-width:0; } .activity-main ha-icon { color:var(--primary-color); }
     .activity-detail { color:var(--secondary-text-color); font-size:12px; margin-top:3px; }
-    .progress { margin-top:10px; } ha-linear-progress { width:100%; } .error { color:var(--error-color); font-size:12px; margin-top:7px; }
+    .error { color:var(--error-color); font-size:12px; margin-top:10px; }
     .actions { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 22px 22px; }
-    ha-button { width:100%; } ha-button ha-icon { margin-right:6px; --mdc-icon-size:19px; }
+    ha-progress-button { width:100%; } ha-progress-button ha-icon { margin-right:6px; --mdc-icon-size:19px; }
     @container (max-width:520px) { .header,.update-head { align-items:flex-start; } .header { flex-direction:column; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .actions { grid-template-columns:1fr; } }
     @container (max-width:340px) { .grid { grid-template-columns:1fr; } }
   `;
@@ -772,16 +772,16 @@ var URDBCard = class extends i4 {
         ${resources.map(([label, value, suffix]) => this._metric(label, `${value}${suffix}`))}
       </div></section>
       ${hasUpdate ? b2`<section class="update-banner"><div class="update-head"><div><div class="update-title"><ha-icon icon="mdi:update"></ha-icon>${t3.updateReady}</div><div class="latest">${t3.latest}: ${attributes.latest_version ?? "\u2014"}</div></div>
-        <ha-button appearance="filled" data-action="update" ?disabled=${Boolean(this._operation)} @click=${() => this._run("update")}><ha-icon icon="mdi:download"></ha-icon>${t3.update}</ha-button></div>
+        <ha-progress-button appearance="filled" data-action="update" .progress=${this._operation === "update"} ?disabled=${Boolean(this._operation)} @click=${() => this._run("update")}><ha-icon icon="mdi:download"></ha-icon>${t3.update}</ha-progress-button></div>
         <div class="notes"><strong>${t3.releaseNotes}</strong>${changes.length ? b2`<ul>${changes.slice(0, 10).map((item) => b2`<li>${item}</li>`)}</ul>` : b2`<div class="activity-detail">${t3.noNotes}</div>`}</div></section>` : b2`<div class="up-to-date good"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${t3.upToDate}</div>`}
       <section class="section"><h3 class="section-title">${t3.activity}</h3><div class="activity"><div class="activity-main"><ha-icon icon="mdi:history"></ha-icon><div>
         <div class="value">${this._lastAction ? this._actionLabel(this._lastAction.action, t3) : t3.noActivity}</div>
         ${this._lastAction ? b2`<div class="activity-detail">${activityState} · ${this._formatDate(this._lastAction.at)}</div>` : A}
       </div></div>${this._operation ? b2`<strong>${this._progress}%</strong>` : A}</div>
-      ${this._operation ? b2`<div class="progress" role="status" aria-live="polite"><ha-linear-progress .progress=${this._progress / 100}></ha-linear-progress>${this._error ? b2`<div class="error">${this._error}</div>` : A}</div>` : A}</section>
+      ${this._error ? b2`<div class="error" role="status" aria-live="polite">${this._error}</div>` : A}</section>
       <div class="actions">
         ${[["check", t3.check, "mdi:refresh"], ["update", t3.update, "mdi:download"], ["restart", t3.restart, "mdi:restart"]].map(([action, label, icon]) => b2`
-          <ha-button appearance="outlined" data-action=${action} ?disabled=${Boolean(this._operation)} @click=${() => this._run(action)}><ha-icon icon=${icon}></ha-icon>${label}</ha-button>`)}
+          <ha-progress-button appearance="outlined" data-action=${action} .progress=${this._operation === action} ?disabled=${Boolean(this._operation)} @click=${() => this._run(action)}><ha-icon icon=${icon}></ha-icon>${label}</ha-progress-button>`)}
       </div>
     </ha-card>`;
   }
