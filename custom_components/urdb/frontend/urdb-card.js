@@ -1,4 +1,4 @@
-const INTEGRATION_VERSION = "0.3.2";
+const INTEGRATION_VERSION = "0.3.3";
 const DEFAULT_CONFIG = {
   status_entity: "sensor.urdb_status",
   changes_entity: "sensor.urdb_changes",
@@ -44,7 +44,7 @@ class URDBCard extends HTMLElement {
 
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
+    this._root = this;
     this._config = { ...DEFAULT_CONFIG };
     this._operation = null;
     this._progress = 0;
@@ -106,7 +106,7 @@ class URDBCard extends HTMLElement {
   }
 
   _render() {
-    if (!this.shadowRoot) return;
+    if (!this._root) return;
     const t = this._strings();
     const status = this._state(this._config.status_entity);
     const changesState = this._state(this._config.changes_entity);
@@ -127,7 +127,7 @@ class URDBCard extends HTMLElement {
       ? { running: t.running, completed: t.completed, failed: t.failed }[this._lastAction.state]
       : null;
 
-    this.shadowRoot.innerHTML = `
+    this._root.innerHTML = `
       <style>
         :host { display:block; container-type:inline-size; }
         ha-card { overflow:hidden; color:var(--primary-text-color); background:var(--ha-card-background,var(--card-background-color)); }
@@ -201,9 +201,9 @@ class URDBCard extends HTMLElement {
           <ha-button appearance="outlined" data-action="restart" ${this._operation ? "disabled" : ""}><ha-icon icon="mdi:restart"></ha-icon>${t.restart}</ha-button>
         </div>
       </ha-card>`;
-    const progress = this.shadowRoot.querySelector("ha-linear-progress");
+    const progress = this._root.querySelector("ha-linear-progress");
     if (progress) progress.progress = this._progress / 100;
-    this.shadowRoot.querySelectorAll("[data-action]").forEach((button) => {
+    this._root.querySelectorAll("[data-action]").forEach((button) => {
       button.addEventListener("click", () => this._run(button.dataset.action));
     });
   }
