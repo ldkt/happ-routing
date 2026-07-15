@@ -47,7 +47,11 @@ class StatusService:
     def get_status(self) -> dict[str, object]:
         update = self._client.check_updates()
         current_version = _string(update, "current_version")
-        latest_version = _string(update, "latest_version")
+        latest_version = update.get("latest_version")
+        if latest_version is not None and (
+            not isinstance(latest_version, str) or not latest_version
+        ):
+            raise StatusAPIError("Orchestrator returned invalid latest_version")
         has_update = update.get("has_update")
         if not isinstance(has_update, bool):
             raise StatusAPIError("Orchestrator returned invalid has_update")
@@ -65,7 +69,7 @@ class StatusService:
         checked_at = self._clock()
         if checked_at.tzinfo is None:
             raise StatusAPIError("status clock must return a timezone-aware datetime")
-        return {
+        result: dict[str, object] = {
             "current_version": current_version,
             "latest_version": latest_version,
             "has_update": has_update,
@@ -75,6 +79,16 @@ class StatusService:
             .replace("+00:00", "Z"),
             "health": "ok",
         }
+        github_status = update.get("github_status")
+        github_error = update.get("github_error")
+        if github_status is not None or github_error is not None:
+            if github_status not in {"rate_limited", "unavailable"}:
+                raise StatusAPIError("Orchestrator returned invalid github_status")
+            if not isinstance(github_error, str) or not github_error:
+                raise StatusAPIError("Orchestrator returned invalid github_error")
+            result["github_status"] = github_status
+            result["github_error"] = github_error
+        return result
 
     def get_changes(self) -> dict[str, object]:
         """Return changes from the latest release's explicit changes section."""
