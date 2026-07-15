@@ -3,9 +3,10 @@
   "name": "Universal Routing Database",
   "codeowners": ["@ldkt"],
   "config_flow": true,
+  "dependencies": ["frontend"],
   "documentation": "https://github.com/ldkt/happ-routing#home-assistant",
   "integration_type": "service",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ldkt/happ-routing/issues",
-  "version": "0.1.1"
+  "version": "0.2.0"
 }
