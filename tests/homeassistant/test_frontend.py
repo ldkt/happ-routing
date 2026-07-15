@@ -57,5 +57,9 @@ def test_card_asset_has_visual_editor_actions_progress_and_theme_support() -> No
     assert 'data-action="update"' in source
     assert 'data-action="restart"' in source
     assert 'class="progress"' in source
+    assert "INTEGRATION_VERSION" in source
+    assert "rate_limited" in source
+    assert "ha-linear-progress" in source
+    assert "System is up to date" in source
     assert "--primary-text-color" in source
     assert "--ha-card-background" in source
