@@ -63,7 +63,7 @@ test("renders first-class update status and invokes all Home Assistant buttons",
   assert.match(card.shadowRoot.innerHTML, /routing-2/);
   assert.match(card.shadowRoot.innerHTML, /YouTube/);
   assert.match(card.shadowRoot.innerHTML, /Universal Routing Database/);
-  assert.match(card.shadowRoot.innerHTML, /Integration: v0\.3\.1/);
+  assert.match(card.shadowRoot.innerHTML, /Integration: v0\.3\.2/);
   assert.match(card.shadowRoot.innerHTML, /Routing update available/);
   for (const [action, entityId] of [
     ["check", "button.check"],

@@ -1,4 +1,4 @@
-const INTEGRATION_VERSION = "0.3.1";
+const INTEGRATION_VERSION = "0.3.2";
 const DEFAULT_CONFIG = {
   status_entity: "sensor.urdb_status",
   changes_entity: "sensor.urdb_changes",

@@ -1,13 +1,12 @@
 {
   "domain": "urdb",
   "name": "Universal Routing Database",
-  "after_dependencies": ["frontend"],
   "codeowners": ["@ldkt"],
   "config_flow": true,
-  "dependencies": ["http"],
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/ldkt/happ-routing#home-assistant",
   "integration_type": "service",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ldkt/happ-routing/issues",
-  "version": "0.3.1"
+  "version": "0.3.2"
 }
