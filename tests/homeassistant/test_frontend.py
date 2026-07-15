@@ -4,8 +4,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.components import frontend
 
 from custom_components.urdb.const import DOMAIN
+import custom_components.urdb.frontend as urdb_frontend
 from custom_components.urdb.frontend import (
     CARD_URL,
     async_register_card,
@@ -13,12 +15,10 @@ from custom_components.urdb.frontend import (
 )
 
 
-pytestmark = pytest.mark.asyncio
-
-
+@pytest.mark.asyncio
 async def test_card_is_registered_once_and_unregistered_after_last_entry() -> None:
     hass = MagicMock()
-    hass.data = {}
+    hass.data = {frontend.DATA_EXTRA_MODULE_URL: MagicMock()}
     hass.http.async_register_static_paths = AsyncMock()
 
     with (
@@ -45,9 +45,7 @@ async def test_card_is_registered_once_and_unregistered_after_last_entry() -> No
 
 def test_card_asset_has_visual_editor_actions_progress_and_theme_support() -> None:
     source = (
-        Path(__file__).parents[2]
-        / "custom_components"
-        / "urdb"
+        Path(urdb_frontend.__file__).parent
         / "frontend"
         / "urdb-card.js"
     ).read_text(encoding="utf-8")
