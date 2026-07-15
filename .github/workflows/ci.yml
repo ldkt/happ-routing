@@ -16,8 +16,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "11.7.0"
       - name: Test URDB dashboard card
-        run: node --test tests/frontend/urdb-card.test.mjs
+        run: pnpm install --frozen-lockfile && pnpm test:frontend
 
   homeassistant:
     runs-on: ubuntu-latest
