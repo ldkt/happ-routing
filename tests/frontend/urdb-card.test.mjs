@@ -84,17 +84,17 @@ test("renders status and invokes every Home Assistant action through Lit events"
 
   assert.match(card.shadowRoot.textContent, /routing-2/);
   assert.match(card.shadowRoot.textContent, /YouTube/);
-  assert.match(card.shadowRoot.textContent, /Integration: v0.4.0/);
+  assert.match(card.shadowRoot.textContent, /Integration: v0.4.1/);
   assert.match(card.shadowRoot.textContent, /Routing update available/);
   assert.ok(card.shadowRoot.querySelector("ha-card"));
-  assert.ok(card.shadowRoot.querySelector("ha-button"));
+  assert.ok(card.shadowRoot.querySelector("ha-progress-button"));
 
   for (const [action, entityId] of [
     ["check", "button.check"], ["update", "button.update"], ["restart", "button.restart"],
   ]) {
     card._operation = null;
     await card.updateComplete;
-    card.shadowRoot.querySelector(`ha-button[data-action="${action}"]`).click();
+    card.shadowRoot.querySelector(`ha-progress-button[data-action="${action}"]`).click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.deepEqual(calls.at(-1), ["button", "press", { entity_id:entityId }]);
     assert.equal(card._lastAction.action, action);
@@ -117,7 +117,9 @@ test("renders progress and rate-limit state through the Lit template", async () 
 
   assert.match(card.shadowRoot.textContent, /Cached release data is being used/);
   assert.match(card.shadowRoot.textContent, /System is up to date/);
-  const progress = card.shadowRoot.querySelector("ha-linear-progress");
+  const progress = card.shadowRoot.querySelector('ha-progress-button[data-action="update"]');
   assert.ok(progress);
-  assert.equal(progress.progress, 0.42);
+  assert.equal(progress.progress, true);
+  assert.match(card.shadowRoot.textContent, /42%/);
+  assert.equal(card.shadowRoot.querySelector("ha-linear-progress"), null);
 });
