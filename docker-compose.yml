@@ -33,7 +33,7 @@ services:
     container_name: urdb-updater
     environment:
       URDB_IMAGE: ${URDB_IMAGE:-ghcr.io/ldkt/happ-routing:latest}
-      URDB_COMPOSE_FILE: /deployment/docker-compose.yml
+      URDB_COMPOSE_FILE: /opt/urdb/docker-compose.yml
       URDB_UPDATER_TOKEN: ${URDB_UPDATER_TOKEN:-replace-with-a-long-random-token}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
