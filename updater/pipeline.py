@@ -42,11 +42,21 @@ class DockerPipeline:
             self._execute(["docker", "pull", self.image])
             self._compose_up(force=False)
         except subprocess.CalledProcessError as error:
-            LOGGER.error("URDB rollout failed; restoring image %s", old_image)
+            LOGGER.exception(
+                "URDB rollout failed: cmd=%r stdout=%r; restoring image %s",
+                error.cmd,
+                error.stdout,
+                old_image,
+            )
             try:
                 self._execute(["docker", "image", "tag", rollback_tag, self.image])
                 self._compose_up(force=True)
             except subprocess.CalledProcessError as rollback_error:
+                LOGGER.exception(
+                    "URDB automatic rollback failed: cmd=%r stdout=%r",
+                    rollback_error.cmd,
+                    rollback_error.stdout,
+                )
                 raise UpdateError(
                     "update and automatic rollback both failed"
                 ) from rollback_error
