@@ -75,3 +75,39 @@ async def test_config_entry_creates_all_entities_on_one_device(hass) -> None:
     assert device is not None
     assert device.name == "URDB"
     assert (DOMAIN, entry.entry_id) in device.identifiers
+
+
+async def test_frontend_failure_does_not_block_entity_platforms(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="URDB",
+        unique_id="http://urdb-frontend-failure.example",
+        data={CONF_API_URL: "http://urdb-frontend-failure.example"},
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.urdb.api.URDBAPIClient.status",
+            new=AsyncMock(return_value=STATUS),
+        ),
+        patch(
+            "custom_components.urdb.api.URDBAPIClient.changes",
+            new=AsyncMock(return_value=CHANGES),
+        ),
+        patch(
+            "custom_components.urdb.async_register_card",
+            new=AsyncMock(side_effect=RuntimeError("frontend unavailable")),
+        ),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert {
+        "sensor.urdb_status",
+        "sensor.urdb_changes",
+        "button.check",
+        "button.update",
+        "button.restart",
+    } <= set(hass.states.async_entity_ids())

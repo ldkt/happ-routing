@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TypeAlias
 
 from homeassistant.config_entries import ConfigEntry
@@ -14,6 +15,8 @@ from .coordinator import URDBCoordinator
 from .frontend import async_register_card, async_unregister_card
 
 
+LOGGER = logging.getLogger(__name__)
+
 URDBConfigEntry: TypeAlias = ConfigEntry[URDBCoordinator]
 
 
@@ -23,9 +26,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: URDBConfigEntry) -> bool
     )
     coordinator = URDBCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
-    await async_register_card(hass)
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    try:
+        await async_register_card(hass)
+    except Exception:  # noqa: BLE001 - optional frontend must not block entities
+        LOGGER.exception("Unable to register the optional URDB dashboard card")
     return True
 
 
