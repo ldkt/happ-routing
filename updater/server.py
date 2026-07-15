@@ -121,7 +121,7 @@ def main() -> None:
     )
     pipeline = DockerPipeline(
         image=os.environ.get("URDB_IMAGE", "ghcr.io/ldkt/happ-routing:latest"),
-        compose_file=Path(os.environ.get("URDB_COMPOSE_FILE", "/deployment/docker-compose.yml")),
+        compose_file=Path(os.environ.get("URDB_COMPOSE_FILE", "/opt/urdb/docker-compose.yml")),
     )
     server = create_server(
         ("0.0.0.0", 8081),
