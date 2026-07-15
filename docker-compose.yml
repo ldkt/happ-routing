@@ -6,6 +6,7 @@ services:
       URDB_API_HOST: 0.0.0.0
       URDB_API_PORT: "8080"
       URDB_REPOSITORY: ${URDB_REPOSITORY:-ldkt/happ-routing}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       URDB_UPDATER_URL: http://urdb-updater:8081
       URDB_UPDATER_TOKEN: ${URDB_UPDATER_TOKEN:-replace-with-a-long-random-token}
     ports:

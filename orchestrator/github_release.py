@@ -7,6 +7,8 @@ import os
 from pathlib import Path, PurePath
 import shutil
 import tempfile
+import threading
+import time
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -14,10 +16,19 @@ from urllib.request import Request, urlopen
 
 DEFAULT_REPOSITORY = "ldkt/happ-routing"
 DEFAULT_CURRENT_VERSION = "development"
+DEFAULT_CACHE_TTL = 600.0
 
 
 class OrchestratorError(RuntimeError):
     """Raised when release metadata or an asset cannot be retrieved safely."""
+
+
+class GitHubRequestError(OrchestratorError):
+    """Raised when GitHub cannot currently serve a request."""
+
+    def __init__(self, message: str, *, status: str = "unavailable") -> None:
+        super().__init__(message)
+        self.github_status = status
 
 
 class GitHubReleaseClient:
@@ -30,6 +41,8 @@ class GitHubReleaseClient:
         *,
         token: str | None = None,
         opener: Callable[..., Any] = urlopen,
+        clock: Callable[[], float] = time.monotonic,
+        cache_ttl: float = DEFAULT_CACHE_TTL,
     ) -> None:
         if repository.count("/") != 1 or any(
             not part.strip() for part in repository.split("/")
@@ -37,15 +50,42 @@ class GitHubReleaseClient:
             raise ValueError("repository must use owner/name format")
         if not current_version.strip():
             raise ValueError("current_version must not be empty")
+        if cache_ttl <= 0:
+            raise ValueError("cache_ttl must be positive")
         self.repository = repository
         self.current_version = current_version
-        self._token = token
+        self._token = token if token is not None else token_from_environment()
         self._opener = opener
+        self._clock = clock
+        self._cache_ttl = cache_ttl
+        self._release_cache: dict[str, Any] | None = None
+        self._release_info_cache: dict[str, object] | None = None
+        self._last_attempt_at: float | None = None
+        self._last_error: OrchestratorError | None = None
+        self._cache_lock = threading.RLock()
 
     def check_updates(self) -> dict[str, object]:
         """Return current/latest versions and whether they differ."""
 
-        release = self._latest_release()
+        try:
+            release = self._latest_release()
+        except OrchestratorError as error:
+            with self._cache_lock:
+                release = self._release_cache
+            latest = (
+                _required_string(release, "tag_name") if release is not None else None
+            )
+            release_url = (
+                _required_string(release, "html_url") if release is not None else None
+            )
+            return {
+                "current_version": self.current_version,
+                "latest_version": latest,
+                "has_update": False,
+                "release_url": release_url,
+                "github_status": getattr(error, "github_status", "unavailable"),
+                "github_error": str(error),
+            }
         latest = _required_string(release, "tag_name")
         return {
             "current_version": self.current_version,
@@ -58,6 +98,9 @@ class GitHubReleaseClient:
         """Return normalized JSON-compatible metadata for the latest release."""
 
         release = self._latest_release()
+        with self._cache_lock:
+            if self._release_info_cache is not None:
+                return dict(self._release_info_cache)
         assets = self._assets(release)
         checksum_asset = next(
             (asset for asset in assets if asset["name"] == "SHA256SUMS"), None
@@ -66,13 +109,16 @@ class GitHubReleaseClient:
         if checksum_asset is not None:
             content = self._request_bytes(str(checksum_asset["url"]))
             checksums = _parse_checksums(content.decode("utf-8"))
-        return {
+        result: dict[str, object] = {
             "version": _required_string(release, "tag_name"),
             "date": _required_string(release, "published_at"),
             "artifacts": assets,
             "checksum": checksums,
             "notes": str(release.get("body") or ""),
         }
+        with self._cache_lock:
+            self._release_info_cache = result
+        return dict(result)
 
     def download_release(self) -> Path:
         """Download latest release assets into a new temporary directory.
@@ -102,14 +148,42 @@ class GitHubReleaseClient:
             raise
 
     def _latest_release(self) -> dict[str, Any]:
-        url = f"https://api.github.com/repos/{self.repository}/releases/latest"
-        try:
-            value = json.loads(self._request_bytes(url))
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise OrchestratorError("GitHub returned invalid release JSON") from error
-        if not isinstance(value, dict):
-            raise OrchestratorError("GitHub release response must be a JSON object")
-        return value
+        with self._cache_lock:
+            now = self._clock()
+            if (
+                self._last_attempt_at is not None
+                and now - self._last_attempt_at < self._cache_ttl
+            ):
+                if self._last_error is not None:
+                    raise self._last_error
+                if self._release_cache is None:
+                    raise OrchestratorError("GitHub release cache is empty")
+                return self._release_cache
+
+            url = f"https://api.github.com/repos/{self.repository}/releases/latest"
+            try:
+                value = json.loads(self._request_bytes(url))
+            except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                failure = OrchestratorError("GitHub returned invalid release JSON")
+                self._last_attempt_at = now
+                self._last_error = failure
+                raise failure from error
+            except OrchestratorError as error:
+                self._last_attempt_at = now
+                self._last_error = error
+                raise
+            if not isinstance(value, dict):
+                failure = OrchestratorError(
+                    "GitHub release response must be a JSON object"
+                )
+                self._last_attempt_at = now
+                self._last_error = failure
+                raise failure
+            self._release_cache = value
+            self._release_info_cache = None
+            self._last_attempt_at = now
+            self._last_error = None
+            return value
 
     def _assets(self, release: dict[str, Any]) -> list[dict[str, object]]:
         raw_assets = release.get("assets")
@@ -139,8 +213,25 @@ class GitHubReleaseClient:
         try:
             with self._opener(request, timeout=30) as response:
                 content = response.read()
-        except (HTTPError, URLError, OSError) as error:
-            raise OrchestratorError(f"cannot retrieve {url}: {error}") from error
+        except HTTPError as error:
+            rate_limited = error.code == 429 or (
+                error.code == 403
+                and (
+                    "rate limit" in str(error).casefold()
+                    or (error.headers or {}).get("X-RateLimit-Remaining") == "0"
+                )
+            )
+            detail = (
+                f"GitHub API {error.code} rate limit exceeded: {error.reason}"
+                if rate_limited
+                else str(error)
+            )
+            raise GitHubRequestError(
+                f"cannot retrieve {url}: {detail}",
+                status="rate_limited" if rate_limited else "unavailable",
+            ) from error
+        except (URLError, OSError) as error:
+            raise GitHubRequestError(f"cannot retrieve {url}: {error}") from error
         if not isinstance(content, bytes):
             raise OrchestratorError(f"invalid response body from {url}")
         return content

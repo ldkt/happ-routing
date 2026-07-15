@@ -10,7 +10,6 @@ from urllib.request import Request, urlopen
 
 from homeassistant.api import StatusService, extract_changes
 from homeassistant.server import create_server
-from orchestrator.github_release import OrchestratorError
 
 
 CHECKED_AT = datetime(2026, 7, 14, 21, 0, tzinfo=timezone.utc)
@@ -65,6 +64,19 @@ class FakeUpdater:
         self.restart_calls += 1
         return {"accepted": True, "message": "Restart scheduled"}
 
+
+class DegradedReleaseClient(FakeReleaseClient):
+    def check_updates(self) -> dict[str, object]:
+        return {
+            "current_version": "routing-20260713",
+            "latest_version": None,
+            "has_update": False,
+            "release_url": None,
+            "github_status": "rate_limited",
+            "github_error": "cannot retrieve GitHub: GitHub API 403 rate limit exceeded",
+        }
+
+
 class StatusServiceTest(unittest.TestCase):
     def test_status_contains_update_and_release_changes(self):
         service = StatusService(FakeReleaseClient(), clock=lambda: CHECKED_AT)
@@ -82,6 +94,17 @@ class StatusServiceTest(unittest.TestCase):
 
         self.assertEqual(result["changes"], [])
         self.assertEqual(client.info_calls, 0)
+
+    def test_rate_limit_is_reported_as_healthy_degraded_status(self):
+        service = StatusService(DegradedReleaseClient(), clock=lambda: CHECKED_AT)
+
+        result = service.get_status()
+
+        self.assertEqual(result["health"], "ok")
+        self.assertIsNone(result["latest_version"])
+        self.assertFalse(result["has_update"])
+        self.assertEqual(result["github_status"], "rate_limited")
+        self.assertIn("403 rate limit exceeded", result["github_error"])
 
     def test_changes_require_an_explicit_release_note_section(self):
         self.assertEqual(extract_changes("Updated YouTube and GitHub."), [])
@@ -199,25 +222,22 @@ class StatusHTTPTest(unittest.TestCase):
         self.assertEqual(context.exception.code, 405)
         self.assertEqual(context.exception.headers["Allow"], "GET")
 
-    def test_orchestrator_error_returns_503(self):
+    def test_rate_limit_returns_http_200(self):
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=2)
-        service = StatusService(
-            FakeReleaseClient(error=OrchestratorError("GitHub unavailable")),
-            clock=lambda: CHECKED_AT,
-        )
+        service = StatusService(DegradedReleaseClient(), clock=lambda: CHECKED_AT)
         self.server = create_server(("127.0.0.1", 0), service)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         host, port = self.server.server_address
 
-        with self.assertRaises(HTTPError) as context:
-            urlopen(f"http://{host}:{port}/api/status", timeout=2)
+        with urlopen(f"http://{host}:{port}/api/status", timeout=2) as response:
+            payload = json.load(response)
 
-        self.assertEqual(context.exception.code, 503)
-        payload = json.load(context.exception)
-        self.assertEqual(payload["health"], "error")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(payload["health"], "ok")
+        self.assertEqual(payload["github_status"], "rate_limited")
 
 
 if __name__ == "__main__":

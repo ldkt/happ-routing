@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stdout
 import io
 import json
 from pathlib import Path
 import shutil
 import unittest
-from urllib.error import URLError
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
 from orchestrator.cli import main
@@ -69,6 +70,19 @@ class FakeOpener:
             raise URLError("not found") from error
 
 
+class SequenceOpener:
+    def __init__(self, responses: list[bytes | Exception]) -> None:
+        self.responses = responses
+        self.requests: list[Request] = []
+
+    def __call__(self, request: Request, *, timeout: int) -> FakeResponse:
+        self.requests.append(request)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return FakeResponse(response)
+
+
 class GitHubReleaseClientTest(unittest.TestCase):
     def client(
         self, *, current_version: str = "routing-20260713"
@@ -102,6 +116,68 @@ class GitHubReleaseClientTest(unittest.TestCase):
 
         self.assertFalse(result["has_update"])
 
+    def test_rate_limit_returns_degraded_status_instead_of_raising(self):
+        error = HTTPError(API_URL, 403, "rate limit exceeded", {}, None)
+        client = GitHubReleaseClient(opener=SequenceOpener([error]))
+
+        result = client.check_updates()
+
+        self.assertIsNone(result["latest_version"])
+        self.assertFalse(result["has_update"])
+        self.assertEqual(result["github_status"], "rate_limited")
+        self.assertIn("403", result["github_error"])
+        self.assertIn("rate limit exceeded", result["github_error"])
+
+    def test_network_failure_returns_degraded_status(self):
+        opener = SequenceOpener([URLError("network unreachable")])
+        client = GitHubReleaseClient(opener=opener)
+
+        result = client.check_updates()
+        repeated = client.check_updates()
+
+        self.assertIsNone(result["latest_version"])
+        self.assertFalse(result["has_update"])
+        self.assertEqual(result["github_status"], "unavailable")
+        self.assertIn("network unreachable", result["github_error"])
+        self.assertEqual(repeated, result)
+        self.assertEqual(len(opener.requests), 1)
+
+    def test_successful_release_is_cached_for_ten_minutes_and_used_on_failure(self):
+        now = [100.0]
+        opener = SequenceOpener(
+            [release_payload(), URLError("network unreachable")]
+        )
+        client = GitHubReleaseClient(opener=opener, clock=lambda: now[0])
+
+        first = client.check_updates()
+        now[0] += 599
+        cached = client.check_updates()
+
+        self.assertEqual(len(opener.requests), 1)
+        self.assertEqual(cached, first)
+
+        now[0] += 2
+        degraded = client.check_updates()
+
+        self.assertEqual(len(opener.requests), 2)
+        self.assertEqual(degraded["latest_version"], "routing-20260714")
+        self.assertFalse(degraded["has_update"])
+        self.assertEqual(degraded["github_status"], "unavailable")
+
+        repeated_degraded = client.check_updates()
+        self.assertEqual(repeated_degraded, degraded)
+        self.assertEqual(len(opener.requests), 2)
+
+    def test_github_token_environment_variable_adds_bearer_header(self):
+        opener = SequenceOpener([release_payload()])
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "secret-token"}, clear=True):
+            GitHubReleaseClient(opener=opener).check_updates()
+
+        self.assertEqual(
+            opener.requests[0].get_header("Authorization"),
+            "Bearer secret-token",
+        )
+
     def test_get_release_info_returns_normalized_json_data(self):
         result = self.client().get_release_info()
 
@@ -114,6 +190,24 @@ class GitHubReleaseClientTest(unittest.TestCase):
         self.assertEqual(
             [artifact["name"] for artifact in result["artifacts"]],
             ["happ-routing.json", "SHA256SUMS"],
+        )
+
+    def test_release_info_and_checksum_are_cached(self):
+        opener = FakeOpener(
+            {
+                API_URL: release_payload(),
+                SUMS_URL: f"{PROFILE_DIGEST}  happ-routing.json\n".encode(),
+            }
+        )
+        client = GitHubReleaseClient(opener=opener)
+
+        first = client.get_release_info()
+        second = client.get_release_info()
+
+        self.assertEqual(second, first)
+        self.assertEqual(
+            [request.full_url for request in opener.requests],
+            [API_URL, SUMS_URL],
         )
 
     def test_download_release_uses_a_new_temporary_directory(self):
@@ -164,13 +258,14 @@ class GitHubReleaseClientTest(unittest.TestCase):
 
     def test_cli_reports_release_errors(self):
         client = GitHubReleaseClient(opener=FakeOpener({}))
-        error_output = io.StringIO()
+        output = io.StringIO()
 
-        with redirect_stderr(error_output):
+        with redirect_stdout(output):
             status = main(["check"], client=client)
 
-        self.assertEqual(status, 1)
-        self.assertIn("urdb: cannot retrieve", error_output.getvalue())
+        self.assertEqual(status, 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["github_status"], "unavailable")
 
 
 if __name__ == "__main__":
