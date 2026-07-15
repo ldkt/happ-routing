@@ -31,7 +31,8 @@ async def test_card_resource_is_loaded_and_served_by_home_assistant(
     assert response.status == 200
     source = await response.text()
     assert 'customElements.define("urdb-card"' in source
-    assert 'type:"urdb-card", name:"Universal Routing Database"' in source
+    assert 'type: "urdb-card"' in source
+    assert 'name: "Universal Routing Database"' in source
 
 
 @pytest.mark.asyncio
@@ -68,15 +69,21 @@ def test_card_asset_has_visual_editor_actions_progress_and_theme_support() -> No
     source = (
         Path(urdb_frontend.__file__).parent
         / "frontend"
+        / "src"
         / "urdb-card.js"
     ).read_text(encoding="utf-8")
 
     assert 'customElements.define("urdb-card"' in source
     assert 'customElements.define("urdb-card-editor"' in source
     assert "window.customCards.push" in source
-    assert 'data-action="check"' in source
-    assert 'data-action="update"' in source
-    assert 'data-action="restart"' in source
+    assert "class URDBCard extends LitElement" in source
+    assert "class URDBCardEditor extends LitElement" in source
+    assert "render()" in source
+    assert "innerHTML" not in source
+    assert 'button.check' in source
+    assert 'button.update' in source
+    assert 'button.restart' in source
+    assert '@click=${() => this._run(action)}' in source
     assert 'class="progress"' in source
     assert "INTEGRATION_VERSION" in source
     assert "rate_limited" in source
