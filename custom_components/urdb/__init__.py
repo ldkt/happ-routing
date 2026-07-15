@@ -12,12 +12,21 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import URDBAPIClient
 from .const import CONF_API_URL, PLATFORMS
 from .coordinator import URDBCoordinator
-from .frontend import async_register_card, async_unregister_card
+from .frontend import async_register_card
 
 
 LOGGER = logging.getLogger(__name__)
 
 URDBConfigEntry: TypeAlias = ConfigEntry[URDBCoordinator]
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up integration-wide resources."""
+    try:
+        await async_register_card(hass)
+    except Exception:  # noqa: BLE001 - optional frontend must not block entities
+        LOGGER.exception("Unable to register the optional URDB dashboard card")
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: URDBConfigEntry) -> bool:
@@ -28,15 +37,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: URDBConfigEntry) -> bool
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    try:
-        await async_register_card(hass)
-    except Exception:  # noqa: BLE001 - optional frontend must not block entities
-        LOGGER.exception("Unable to register the optional URDB dashboard card")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: URDBConfigEntry) -> bool:
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unloaded:
-        async_unregister_card(hass)
-    return unloaded
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

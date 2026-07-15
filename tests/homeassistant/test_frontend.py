@@ -8,22 +8,33 @@ from homeassistant.components import frontend
 
 from custom_components.urdb.const import DOMAIN
 import custom_components.urdb.frontend as urdb_frontend
+from custom_components.urdb import async_setup
 from custom_components.urdb.frontend import (
     CARD_URL,
     async_register_card,
-    async_unregister_card,
 )
 
 
 @pytest.mark.asyncio
-async def test_card_is_registered_once_and_unregistered_after_last_entry() -> None:
+async def test_integration_setup_registers_card_before_config_entries() -> None:
+    hass = MagicMock()
+
+    with patch(
+        "custom_components.urdb.async_register_card", new=AsyncMock()
+    ) as register:
+        assert await async_setup(hass, {})
+
+    register.assert_awaited_once_with(hass)
+
+
+@pytest.mark.asyncio
+async def test_card_is_registered_once_for_the_integration_lifetime() -> None:
     hass = MagicMock()
     hass.data = {frontend.DATA_EXTRA_MODULE_URL: MagicMock()}
     hass.http.async_register_static_paths = AsyncMock()
 
     with (
         patch("custom_components.urdb.frontend.frontend.add_extra_js_url") as add,
-        patch("custom_components.urdb.frontend.frontend.remove_extra_js_url") as remove,
     ):
         await async_register_card(hass)
         await async_register_card(hass)
@@ -31,16 +42,7 @@ async def test_card_is_registered_once_and_unregistered_after_last_entry() -> No
         hass.http.async_register_static_paths.assert_awaited_once()
         add.assert_called_once_with(hass, CARD_URL)
 
-        async_unregister_card(hass)
-        remove.assert_not_called()
-        async_unregister_card(hass)
-        remove.assert_called_once_with(hass, CARD_URL)
-
-        await async_register_card(hass)
-        hass.http.async_register_static_paths.assert_awaited_once()
-        assert add.call_count == 2
-
-    assert hass.data[DOMAIN]["card_users"] == 1
+    assert hass.data[DOMAIN]["card_loaded"] is True
 
 
 def test_card_asset_has_visual_editor_actions_progress_and_theme_support() -> None:

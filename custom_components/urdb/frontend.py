@@ -14,7 +14,6 @@ CARD_URL = "/urdb/frontend/urdb-card.js"
 _CARD_PATH = Path(__file__).parent / "frontend" / "urdb-card.js"
 _DATA_STATIC_REGISTERED = "card_static_registered"
 _DATA_CARD_LOADED = "card_loaded"
-_DATA_CARD_USERS = "card_users"
 
 
 async def async_register_card(hass: HomeAssistant) -> None:
@@ -33,16 +32,3 @@ async def async_register_card(hass: HomeAssistant) -> None:
     if not domain_data.get(_DATA_CARD_LOADED):
         frontend.add_extra_js_url(hass, CARD_URL)
         domain_data[_DATA_CARD_LOADED] = True
-        domain_data[_DATA_CARD_USERS] = 0
-    domain_data[_DATA_CARD_USERS] += 1
-
-
-def async_unregister_card(hass: HomeAssistant) -> None:
-    """Stop loading the card when the final URDB entry is unloaded."""
-    domain_data = hass.data.get(DOMAIN)
-    if not domain_data or not domain_data.get(_DATA_CARD_LOADED):
-        return
-    domain_data[_DATA_CARD_USERS] = max(0, domain_data[_DATA_CARD_USERS] - 1)
-    if domain_data[_DATA_CARD_USERS] == 0:
-        frontend.remove_extra_js_url(hass, CARD_URL)
-        domain_data[_DATA_CARD_LOADED] = False
