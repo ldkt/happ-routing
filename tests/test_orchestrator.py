@@ -168,6 +168,45 @@ class GitHubReleaseClientTest(unittest.TestCase):
         self.assertEqual(repeated_degraded, degraded)
         self.assertEqual(len(opener.requests), 2)
 
+    def test_release_changes_use_cached_notes_during_rate_limit(self):
+        now = [100.0]
+        error = HTTPError(API_URL, 403, "rate limit exceeded", {}, None)
+        opener = SequenceOpener([release_payload(), error])
+        client = GitHubReleaseClient(opener=opener, clock=lambda: now[0])
+
+        current = client.get_release_changes()
+        now[0] += 601
+        cached = client.get_release_changes()
+
+        self.assertEqual(current["version"], "routing-20260714")
+        self.assertEqual(cached["version"], "routing-20260714")
+        self.assertEqual(cached["notes"], "Immutable routing data release.")
+        self.assertEqual(cached["github_status"], "rate_limited")
+        self.assertIn("403 rate limit exceeded", cached["github_error"])
+        self.assertEqual(len(opener.requests), 2)
+
+    def test_release_changes_without_cache_degrade_to_empty(self):
+        error = HTTPError(API_URL, 403, "rate limit exceeded", {}, None)
+        client = GitHubReleaseClient(opener=SequenceOpener([error]))
+
+        result = client.get_release_changes()
+
+        self.assertIsNone(result["version"])
+        self.assertEqual(result["notes"], "")
+        self.assertEqual(result["github_status"], "rate_limited")
+
+    def test_release_changes_without_network_return_unavailable(self):
+        client = GitHubReleaseClient(
+            opener=SequenceOpener([URLError("network unreachable")])
+        )
+
+        result = client.get_release_changes()
+
+        self.assertIsNone(result["version"])
+        self.assertEqual(result["notes"], "")
+        self.assertEqual(result["github_status"], "unavailable")
+        self.assertIn("network unreachable", result["github_error"])
+
     def test_github_token_environment_variable_adds_bearer_header(self):
         opener = SequenceOpener([release_payload()])
         with patch.dict("os.environ", {"GITHUB_TOKEN": "secret-token"}, clear=True):
