@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components import frontend
+from homeassistant.setup import async_setup_component
 
 from custom_components.urdb.const import DOMAIN
 import custom_components.urdb.frontend as urdb_frontend
@@ -13,6 +14,24 @@ from custom_components.urdb.frontend import (
     CARD_URL,
     async_register_card,
 )
+
+pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
+
+
+@pytest.mark.asyncio
+async def test_card_resource_is_loaded_and_served_by_home_assistant(
+    hass, hass_client
+) -> None:
+    assert await async_setup_component(hass, DOMAIN, {})
+
+    assert CARD_URL in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls
+
+    client = await hass_client()
+    response = await client.get(CARD_URL)
+    assert response.status == 200
+    source = await response.text()
+    assert 'customElements.define("urdb-card"' in source
+    assert 'type:"urdb-card", name:"Universal Routing Database"' in source
 
 
 @pytest.mark.asyncio

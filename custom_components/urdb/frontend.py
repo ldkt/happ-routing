@@ -24,11 +24,6 @@ async def async_register_card(hass: HomeAssistant) -> None:
             [StaticPathConfig(CARD_URL, str(_CARD_PATH), False)]
         )
         domain_data[_DATA_STATIC_REGISTERED] = True
-    # Headless test and recovery environments may run without the frontend.
-    # In normal Home Assistant installations, after_dependencies guarantees
-    # frontend has had the opportunity to initialize before URDB.
-    if frontend.DATA_EXTRA_MODULE_URL not in hass.data:
-        return
     if not domain_data.get(_DATA_CARD_LOADED):
         frontend.add_extra_js_url(hass, CARD_URL)
         domain_data[_DATA_CARD_LOADED] = True
