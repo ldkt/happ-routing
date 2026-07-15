@@ -9,6 +9,16 @@ permissions:
   contents: read
 
 jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test URDB dashboard card
+        run: node --test tests/frontend/urdb-card.test.mjs
+
   homeassistant:
     runs-on: ubuntu-latest
     steps:
