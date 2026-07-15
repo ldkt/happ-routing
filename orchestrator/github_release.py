@@ -120,6 +120,25 @@ class GitHubReleaseClient:
             self._release_info_cache = result
         return dict(result)
 
+    def get_release_changes(self) -> dict[str, object]:
+        """Return release notes with the same resilient cache as update checks."""
+
+        try:
+            release = self._latest_release()
+        except OrchestratorError as error:
+            with self._cache_lock:
+                release = self._release_cache
+            return {
+                "version": _optional_string(release, "tag_name"),
+                "notes": str(release.get("body") or "") if release else "",
+                "github_status": getattr(error, "github_status", "unavailable"),
+                "github_error": str(error),
+            }
+        return {
+            "version": _required_string(release, "tag_name"),
+            "notes": str(release.get("body") or ""),
+        }
+
     def download_release(self) -> Path:
         """Download latest release assets into a new temporary directory.
 
@@ -269,6 +288,13 @@ def _required_string(mapping: dict[str, Any], field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise OrchestratorError(f"GitHub release response lacks {field}")
     return value
+
+
+def _optional_string(mapping: dict[str, Any] | None, field: str) -> str | None:
+    if mapping is None:
+        return None
+    value = mapping.get(field)
+    return value if isinstance(value, str) and value.strip() else None
 
 
 def _parse_checksums(content: str) -> dict[str, str]:

@@ -17,6 +17,8 @@ class ReleaseClient(Protocol):
 
     def get_release_info(self) -> dict[str, object]: ...
 
+    def get_release_changes(self) -> dict[str, object]: ...
+
 
 class UpdateController(Protocol):
     """Privileged operations delegated to the updater sidecar."""
@@ -66,17 +68,12 @@ class StatusService:
                 raise StatusAPIError("Orchestrator returned invalid release notes")
             changes = extract_changes(notes)
 
-        checked_at = self._clock()
-        if checked_at.tzinfo is None:
-            raise StatusAPIError("status clock must return a timezone-aware datetime")
         result: dict[str, object] = {
             "current_version": current_version,
             "latest_version": latest_version,
             "has_update": has_update,
             "changes": changes,
-            "checked_at": checked_at.astimezone(timezone.utc)
-            .isoformat()
-            .replace("+00:00", "Z"),
+            "checked_at": self._checked_at(),
             "health": "ok",
         }
         github_status = update.get("github_status")
@@ -93,12 +90,32 @@ class StatusService:
     def get_changes(self) -> dict[str, object]:
         """Return changes from the latest release's explicit changes section."""
 
-        release = self._client.get_release_info()
-        version = _string(release, "version")
+        release = self._client.get_release_changes()
+        version = release.get("version")
+        if version is not None and (not isinstance(version, str) or not version):
+            raise StatusAPIError("Orchestrator returned invalid version")
         notes = release.get("notes")
         if not isinstance(notes, str):
             raise StatusAPIError("Orchestrator returned invalid release notes")
-        return {"version": version, "changes": extract_changes(notes)}
+        result: dict[str, object] = {
+            "version": version,
+            "changes": extract_changes(notes),
+        }
+        github_status = release.get("github_status")
+        github_error = release.get("github_error")
+        if github_status is not None or github_error is not None:
+            if github_status not in {"rate_limited", "unavailable"}:
+                raise StatusAPIError("Orchestrator returned invalid github_status")
+            if not isinstance(github_error, str) or not github_error:
+                raise StatusAPIError("Orchestrator returned invalid github_error")
+            result.update(
+                {
+                    "github_status": github_status,
+                    "github_error": github_error,
+                    "checked_at": self._checked_at(),
+                }
+            )
+        return result
 
     def check_now(self) -> dict[str, object]:
         """Run an immediate release check and return the existing status model."""
@@ -133,6 +150,16 @@ class StatusService:
             raise StatusAPIError("updater is not configured")
         LOGGER.info("Container restart requested")
         return self._updater.restart()
+
+    def _checked_at(self) -> str:
+        checked_at = self._clock()
+        if checked_at.tzinfo is None:
+            raise StatusAPIError("status clock must return a timezone-aware datetime")
+        return (
+            checked_at.astimezone(timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
 
 
 def extract_changes(notes: str) -> list[str]:

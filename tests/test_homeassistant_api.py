@@ -50,6 +50,10 @@ class FakeReleaseClient:
             "notes": "## Changes\n- YouTube\n- GitHub\n- ChatGPT\n",
         }
 
+    def get_release_changes(self) -> dict[str, object]:
+        release = self.get_release_info()
+        return {"version": release["version"], "notes": release["notes"]}
+
 
 class FakeUpdater:
     def __init__(self) -> None:
@@ -74,6 +78,20 @@ class DegradedReleaseClient(FakeReleaseClient):
             "release_url": None,
             "github_status": "rate_limited",
             "github_error": "cannot retrieve GitHub: GitHub API 403 rate limit exceeded",
+        }
+
+
+class DegradedChangesClient(FakeReleaseClient):
+    def __init__(self, *, cached: bool = False) -> None:
+        super().__init__()
+        self.cached = cached
+
+    def get_release_changes(self) -> dict[str, object]:
+        return {
+            "version": "routing-20260714" if self.cached else None,
+            "notes": "## Changes\n- Cached YouTube\n" if self.cached else "",
+            "github_status": "rate_limited",
+            "github_error": "GitHub API 403 rate limit exceeded",
         }
 
 
@@ -117,6 +135,18 @@ class StatusServiceTest(unittest.TestCase):
         service = StatusService(FakeReleaseClient(), clock=lambda: CHECKED_AT)
 
         self.assertEqual(service.get_changes(), self._golden("changes.json"))
+
+    def test_changes_use_cache_during_rate_limit(self):
+        service = StatusService(
+            DegradedChangesClient(cached=True), clock=lambda: CHECKED_AT
+        )
+
+        result = service.get_changes()
+
+        self.assertEqual(result["version"], "routing-20260714")
+        self.assertEqual(result["changes"], ["Cached YouTube"])
+        self.assertEqual(result["github_status"], "rate_limited")
+        self.assertEqual(result["checked_at"], "2026-07-14T21:00:00Z")
 
     def test_update_checks_release_and_delegates_to_sidecar(self):
         client = FakeReleaseClient()
@@ -181,6 +211,33 @@ class StatusHTTPTest(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["version"], "routing-20260714")
         self.assertEqual(payload["changes"], ["YouTube", "GitHub", "ChatGPT"])
+
+    def test_get_changes_returns_200_without_cache_during_rate_limit(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+        service = StatusService(
+            DegradedChangesClient(), clock=lambda: CHECKED_AT
+        )
+        self.server = create_server(("127.0.0.1", 0), service)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        host, port = self.server.server_address
+
+        with urlopen(f"http://{host}:{port}/api/changes", timeout=2) as response:
+            payload = json.load(response)
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(
+            payload,
+            {
+                "version": None,
+                "changes": [],
+                "github_status": "rate_limited",
+                "github_error": "GitHub API 403 rate limit exceeded",
+                "checked_at": "2026-07-14T21:00:00Z",
+            },
+        )
 
     def test_post_check_runs_immediate_status_check(self):
         request = Request(self.base_url + "/api/check", method="POST")
