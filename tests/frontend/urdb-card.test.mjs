@@ -5,13 +5,14 @@ import { resolve } from "node:path";
 
 const registry = new Map();
 class HTMLElementStub {
-  attachShadow() {
-    this.shadowRoot = {
-      innerHTML: "",
-      querySelector: () => null,
-      querySelectorAll: () => [],
-    };
+  constructor() {
+    this.innerHTML = "";
   }
+  attachShadow() {
+    throw new TypeError("this.root.createShadowRoot is not a function");
+  }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
 }
 
 globalThis.HTMLElement = HTMLElementStub;
@@ -59,12 +60,12 @@ test("renders first-class update status and invokes all Home Assistant buttons",
     callService: async (...args) => calls.push(args),
   };
 
-  assert.match(card.shadowRoot.innerHTML, /routing-1/);
-  assert.match(card.shadowRoot.innerHTML, /routing-2/);
-  assert.match(card.shadowRoot.innerHTML, /YouTube/);
-  assert.match(card.shadowRoot.innerHTML, /Universal Routing Database/);
-  assert.match(card.shadowRoot.innerHTML, /Integration: v0\.3\.2/);
-  assert.match(card.shadowRoot.innerHTML, /Routing update available/);
+  assert.match(card.innerHTML, /routing-1/);
+  assert.match(card.innerHTML, /routing-2/);
+  assert.match(card.innerHTML, /YouTube/);
+  assert.match(card.innerHTML, /Universal Routing Database/);
+  assert.match(card.innerHTML, /Integration: v0\.3\.3/);
+  assert.match(card.innerHTML, /Routing update available/);
   for (const [action, entityId] of [
     ["check", "button.check"],
     ["update", "button.update"],
@@ -76,7 +77,7 @@ test("renders first-class update status and invokes all Home Assistant buttons",
     assert.equal(card._progress, 100);
     assert.equal(card._lastAction.action, action);
     assert.equal(card._lastAction.state, "completed");
-    assert.match(card.shadowRoot.innerHTML, /ha-linear-progress/);
+    assert.match(card.innerHTML, /ha-linear-progress/);
   }
 });
 
@@ -102,8 +103,8 @@ test("treats GitHub rate limiting as healthy cached operation", () => {
     callService: async () => {},
   };
 
-  assert.match(card.shadowRoot.innerHTML, /Cached release data is being used/);
-  assert.match(card.shadowRoot.innerHTML, /System is up to date/);
-  assert.match(card.shadowRoot.innerHTML, /health warn/);
-  assert.doesNotMatch(card.shadowRoot.innerHTML, /health bad/);
+  assert.match(card.innerHTML, /Cached release data is being used/);
+  assert.match(card.innerHTML, /System is up to date/);
+  assert.match(card.innerHTML, /health warn/);
+  assert.doesNotMatch(card.innerHTML, /health bad/);
 });
